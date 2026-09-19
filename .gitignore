@@ -1,0 +1,38 @@
+# Dependencies and test output
+node_modules/
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+*.log
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+.envrc
+.npmrc
+.pgpass
+.netrc
+credentials.json
+service-account*.json
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Database backups and local data; SQL migrations remain publishable
+backups/
+*.dump
+*.backup
+*.sql.gz
+*.sqlite
+*.sqlite3
+
+# Operating system and local editor files
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/

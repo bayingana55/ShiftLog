@@ -1,0 +1,38 @@
+{
+  "name": "shiftlog",
+  "version": "1.0.0",
+  "description": "A personal work-hours, gross earnings, spending, and savings dashboard.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "build": "tailwindcss -i public/css/input.css -o public/css/app.css --minify",
+    "css:watch": "tailwindcss -i public/css/input.css -o public/css/app.css --watch",
+    "migrate": "node scripts/migrate.js",
+    "test": "node --test tests/unit.test.js",
+    "test:integration": "node --test tests/integration.test.js",
+    "test:e2e": "playwright test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "chart.js": "^4.5.1",
+    "dotenv": "^18.0.1",
+    "express": "^5.2.1",
+    "moment-timezone": "^0.6.4",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@tailwindcss/cli": "^4.3.3",
+    "prettier": "^3.9.8",
+    "tailwindcss": "^4.3.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
