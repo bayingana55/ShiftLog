@@ -34,11 +34,11 @@ function chart(id, type, data, options = {}) {
     }),
   );
 }
-export function renderCharts(summary) {
+export function renderCharts(summary, comparison = "planned") {
   const monthly = summary.monthly;
   const incomeData = {
     labels: monthly.map((m) =>
-      window.moment.utc(`${m.month}-01`).format("MMM"),
+      window.moment.utc(`${m.month}-01`).format("MMM YYYY"),
     ),
     datasets: [
       {
@@ -49,8 +49,11 @@ export function renderCharts(summary) {
         maxBarThickness: 15,
       },
       {
-        label: "Spending",
-        data: monthly.map((m) => m.spending),
+        label:
+          comparison === "planned" ? "Planned expenses" : "Actual expenses",
+        data: monthly.map((m) =>
+          comparison === "planned" ? m.planned : m.spending,
+        ),
         backgroundColor: "#d5dfb7",
         borderRadius: 3,
         maxBarThickness: 15,
@@ -90,20 +93,33 @@ export function renderCharts(summary) {
       },
     ],
   });
-  chart("savings-chart", "line", {
-    labels: monthly.map((m) =>
-      window.moment.utc(`${m.month}-01`).format("MMM"),
-    ),
-    datasets: [
-      {
-        label: "Recorded savings",
-        data: monthly.map((m) => m.saved_total),
-        borderColor: "#527753",
-        backgroundColor: "#52775315",
-        fill: true,
-        tension: 0.2,
-        pointRadius: 3,
-      },
-    ],
-  });
+  chart(
+    "savings-chart",
+    "line",
+    {
+      labels: monthly.map((m) =>
+        window.moment.utc(`${m.month}-01`).format("MMM YYYY"),
+      ),
+      datasets: [
+        {
+          label: "Projected savings",
+          data: monthly.map((m) => m.projected_total),
+          borderColor: "#a6b887",
+          borderDash: [5, 4],
+          pointRadius: 2,
+          tension: 0.2,
+        },
+        {
+          label: "Actual savings balance",
+          data: monthly.map((m) => m.saved_total),
+          borderColor: "#527753",
+          backgroundColor: "#52775315",
+          fill: true,
+          tension: 0.2,
+          pointRadius: 3,
+        },
+      ],
+    },
+    { plugins: { legend: { display: true, position: "bottom" } } },
+  );
 }

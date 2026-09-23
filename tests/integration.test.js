@@ -72,7 +72,11 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
         await send(
           "/api/shifts",
           "POST",
-          { job_id: 99999, clock_in: "2026-09-13T12:00" },
+          {
+            job_id: 99999,
+            clock_in: "2026-09-13T12:00",
+            clock_out: "2026-09-13T13:00",
+          },
           404,
         );
         await send(
@@ -166,7 +170,7 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
       );
     });
     await t.test(
-      "dashboard aggregates match shifts; analytics returns 12 months",
+      "dashboard aggregates match shifts; analytics starts in January 2026",
       async () => {
         const s = await send("/api/dashboard"),
           shifts = await send("/api/shifts");
@@ -174,7 +178,12 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
           .filter((x) => x.clock_out && localDate(x.clock_in) >= s.period.month)
           .reduce((n, x) => n + x.gross, 0);
         assert.equal(s.gross_month, Math.round(expected * 100) / 100);
-        assert.equal((await send("/api/analytics")).monthly.length, 12);
+        const analytics = await send("/api/analytics");
+        assert.equal(analytics.monthly[0].month, "2026-01");
+        assert.equal(
+          analytics.monthly.at(-1).month,
+          s.period.month.slice(0, 7),
+        );
         assert.equal(s.payroll.available, false);
       },
     );
@@ -218,6 +227,286 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
         const third = await send("/api/history/import", "POST", payload);
         assert.equal(third.inserted, 0);
         assert.equal((await send("/api/shifts")).length, before + rows.length);
+      },
+    );
+
+    await t.test(
+      "Budget planning, projections, and separate actual savings",
+      async () => {
+        const summary = await send("/api/dashboard");
+        assert.equal(summary.goal, 1000); // prior goal CRUD test intentionally changes it
+        assert.equal(summary.planned_month, 2150);
+        assert.equal(
+          summary.projected_month,
+          Math.round((summary.gross_month - 2150) * 100) / 100,
+        );
+        assert.equal(
+          summary.projected_saved,
+          Math.round(
+            summary.monthly.reduce((n, m) => n + m.income - m.planned, 0) * 100,
+          ) / 100,
+        );
+        assert.equal(summary.saved, 500);
+        assert.equal(summary.actual_pay_month, null);
+        assert.equal(summary.cash_remaining_month, null);
+        const rates = await send("/api/budget");
+        assert.equal(rates.length, 4);
+        const items = summary.budget_items.map((r) => ({
+          ...r,
+          amount: r.category === "Rent" ? 1600 : r.amount,
+        }));
+        await send("/api/budget", "PUT", {
+          effective_from: summary.period.month,
+          items,
+        });
+        const updated = await send("/api/dashboard");
+        assert.equal(updated.planned_month, 2250);
+        assert.equal(updated.monthly[0].planned, 2150);
+        await send("/api/budget", "PUT", {
+          effective_from: summary.period.month,
+          items: summary.budget_items,
+        });
+        await send(
+          "/api/budget",
+          "PUT",
+          { effective_from: "2026-09-02", items },
+          400,
+        );
+      },
+    );
+    await t.test(
+      "Paycheck CRUD supports two employers per payday, null dates, real zero and missing data",
+      async () => {
+        const a = await send(
+          "/api/paychecks",
+          "POST",
+          { job_id: apple, payday: localDate(), actual_amount: 1200 },
+          201,
+        );
+        const d = await send(
+          "/api/paychecks",
+          "POST",
+          { job_id: depot, payday: localDate(), actual_amount: 800 },
+          201,
+        );
+        assert.equal(a.period_start, null);
+        assert.equal(d.period_end, null);
+        await send(
+          "/api/paychecks",
+          "POST",
+          { job_id: apple, payday: localDate(), actual_amount: 100 },
+          409,
+        );
+        let summary = await send("/api/dashboard");
+        assert.equal(summary.actual_pay_month, 2000);
+        assert.equal(summary.saved, 500);
+        assert.equal(
+          summary.cash_remaining_month,
+          2000 - summary.spending_month,
+        );
+        await send(`/api/paychecks/${a.id}`, "PATCH", {
+          actual_amount: 1250,
+          notes: "Corrected amount",
+        });
+        assert.equal((await send("/api/dashboard")).actual_pay_month, 2050);
+        await send(`/api/paychecks/${d.id}`, "DELETE", undefined, 204);
+        await send(`/api/paychecks/${a.id}`, "PATCH", { actual_amount: 0 });
+        assert.equal((await send("/api/dashboard")).actual_pay_month, 0);
+        await send(`/api/paychecks/${a.id}`, "DELETE", undefined, 204);
+        assert.equal((await send("/api/dashboard")).actual_pay_month, null);
+        await send(
+          "/api/paychecks",
+          "POST",
+          { job_id: apple, payday: localDate(), actual_amount: -1 },
+          400,
+        );
+        await send(
+          "/api/paychecks",
+          "POST",
+          {
+            job_id: apple,
+            payday: localDate(),
+            actual_amount: 100,
+            period_start: "2026-09-01",
+          },
+          400,
+        );
+      },
+    );
+    await t.test(
+      "Payday anchor is separate from coverage; estimates require explicit configuration",
+      async () => {
+        const result = await send("/api/pay-periods");
+        assert.equal(result.schedule.anchor_payday, "2026-09-18");
+        assert.ok(result.periods.some((p) => p.payday === "2026-01-09"));
+        assert.ok(
+          result.periods.every(
+            (p) => p.period_start === null && p.gross_estimate === null,
+          ),
+        );
+        await send("/api/payroll-coverage", "PUT", {
+          job_id: apple,
+          anchor_period_end: "2026-09-12",
+        });
+        const configured = await send("/api/pay-periods");
+        assert.equal(
+          configured.periods.find(
+            (p) => p.job_id === apple && p.payday === "2026-09-18",
+          ).period_start,
+          "2026-08-30",
+        );
+        assert.equal(
+          configured.periods.find(
+            (p) => p.job_id === depot && p.payday === "2026-09-18",
+          ).gross_estimate,
+          null,
+        );
+        await send("/api/payroll-coverage", "PUT", {
+          job_id: apple,
+          anchor_period_end: "",
+        });
+      },
+    );
+    await t.test(
+      "Full authorized schedule import preserves samples, ends Sep 17, and reruns safely",
+      async () => {
+        const range = { from: "2026-01-01", to: "2026-09-17" };
+        const rows = await send("/api/history/preview", "POST", range);
+        assert.equal(rows.length, 245);
+        const input = { ...range, keys: rows.map((r) => r.history_key) };
+        await send("/api/history/import", "POST", input);
+        assert.equal(
+          (await send("/api/history/import", "POST", input)).inserted,
+          0,
+        );
+        const shifts = await send("/api/shifts");
+        const imported = shifts.filter((s) => s.source === "schedule");
+        assert.ok(imported.every((s) => localDate(s.clock_in) <= "2026-09-17"));
+        assert.equal(
+          new Set(shifts.map((s) => s.job_id + ":" + s.clock_in)).size,
+          shifts.length,
+        );
+        await send(
+          "/api/history/preview",
+          "POST",
+          { ...range, to: "2026-09-18" },
+          400,
+        );
+        await send(
+          "/api/shifts",
+          "POST",
+          { job_id: apple, clock_in: "2026-09-18T08:00" },
+          400,
+        );
+      },
+    );
+
+    await t.test(
+      "Savings adjustments and withdrawals preserve honest totals and protect concurrent balance",
+      async () => {
+        const before = await send("/api/dashboard");
+        await send("/api/savings-balance", "PUT", { amount: 1000 });
+        assert.equal((await send("/api/dashboard")).saved, 1000);
+        const reduced = await send("/api/savings-balance", "PUT", {
+          amount: 700,
+        });
+        assert.equal(reduced.adjustment, -300);
+        const noChange = await send("/api/savings-balance", "PUT", {
+          amount: 700,
+        });
+        assert.equal(noChange.adjustment, 0);
+        const withdrawal = await send(
+          "/api/transactions",
+          "POST",
+          {
+            date: localDate(),
+            type: "withdrawal",
+            amount: 100,
+            description: "Test withdrawal",
+          },
+          201,
+        );
+        let summary = await send("/api/dashboard");
+        assert.equal(summary.saved, 600);
+        assert.equal(summary.spending_month, before.spending_month);
+        assert.equal(summary.projected_saved, before.projected_saved);
+        await send(`/api/transactions/${withdrawal.id}`, "PATCH", {
+          amount: 50,
+        });
+        assert.equal((await send("/api/dashboard")).saved, 650);
+        await send(
+          `/api/transactions/${withdrawal.id}`,
+          "DELETE",
+          undefined,
+          204,
+        );
+        assert.equal((await send("/api/dashboard")).saved, 700);
+        await send(
+          "/api/transactions",
+          "POST",
+          { date: localDate(), type: "withdrawal", amount: 701 },
+          409,
+        );
+        assert.equal((await send("/api/dashboard")).saved, 700);
+        const concurrent = await Promise.all([
+          request("/api/transactions", "POST", {
+            date: localDate(),
+            type: "withdrawal",
+            amount: 500,
+          }),
+          request("/api/transactions", "POST", {
+            date: localDate(),
+            type: "withdrawal",
+            amount: 500,
+          }),
+        ]);
+        assert.deepEqual(concurrent.map((r) => r.status).sort(), [201, 409]);
+        const deposit = (await send("/api/transactions")).find(
+          (t) => t.type === "savings" && Number(t.amount) === 500,
+        );
+        await send(`/api/transactions/${deposit.id}`, "DELETE", undefined, 409);
+        await send("/api/savings-balance", "PUT", { amount: 0 });
+        assert.equal((await send("/api/dashboard")).saved, 0);
+        await send("/api/savings-balance", "PUT", { amount: -1 }, 400);
+      },
+    );
+    await t.test(
+      "Budget categories can be added, renamed, removed, and cleared without deleting earlier plans",
+      async () => {
+        const month = localDate().slice(0, 7) + "-01";
+        await send("/api/budget", "PUT", {
+          effective_from: month,
+          items: [
+            { category: "Travel", amount: 250 },
+            { category: "Rent", amount: 1000 },
+          ],
+        });
+        let summary = await send("/api/dashboard");
+        assert.equal(summary.planned_month, 1250);
+        assert.equal(summary.monthly[0].planned, 2150);
+        await send("/api/budget", "PUT", {
+          effective_from: month,
+          items: [{ category: "Trips", amount: 200 }],
+        });
+        summary = await send("/api/dashboard");
+        assert.equal(summary.planned_month, 200);
+        assert.deepEqual(summary.budget_items, [
+          { category: "Trips", amount: 200 },
+        ]);
+        await send("/api/budget", "PUT", { effective_from: month, items: [] });
+        assert.equal((await send("/api/dashboard")).planned_month, 0);
+        await send(
+          "/api/budget",
+          "PUT",
+          {
+            effective_from: month,
+            items: [
+              { category: "Rent", amount: 1 },
+              { category: "rent", amount: 2 },
+            ],
+          },
+          400,
+        );
       },
     );
     await t.test(

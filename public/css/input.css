@@ -112,28 +112,7 @@ svg.icon {
   letter-spacing: -1px;
   padding: 0 10px;
 }
-.brand-dot {
-  color: #83a768;
-}
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #1b463d;
-  color: #d9efae;
-  border-radius: 10px;
-  width: 36px;
-  height: 36px;
-  margin-right: 10px;
-  font-size: 30px;
-  line-height: 1;
-  font-style: italic;
-  letter-spacing: -7px;
-  padding-right: 7px;
-}
-.brand-mark span {
-  font-size: 26px;
-}
+
 .nav-label {
   font-size: 10px;
   font-weight: 650;
@@ -946,10 +925,7 @@ footer {
     padding: 0;
     justify-content: center;
   }
-  .brand-mark {
-    margin: 0;
-    font-size: 30px;
-  }
+
   .brand-dot,
   .nav-label,
   .sidebar-bottom {
@@ -1154,5 +1130,90 @@ footer {
   * {
     animation: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Keep the wordmark visible without a logo, including compact navigation. */
+@media (min-width: 541px) and (max-width: 850px) {
+  .brand {
+    font-size: 13px;
+    letter-spacing: -0.5px;
+  }
+}
+@media (max-width: 540px) {
+  .brand {
+    display: block;
+    font-size: 20px;
+    letter-spacing: -0.5px;
+    padding: 0 8px 6px;
+  }
+  .card-head {
+    flex-wrap: wrap;
+  }
+}
+.card-head select {
+  font-size: 11px;
+  padding: 7px;
+}
+
+.shift-table-scroll {
+  max-height: 620px;
+}
+.shift-table-scroll th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.stat-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #edf0e8;
+}
+.stat-actions .btn-link {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.manager-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+dialog.wide-dialog {
+  width: min(1000px, calc(100% - 30px));
+}
+.budget-edit-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 15px;
+}
+.savings-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.transaction-item {
+  flex-wrap: wrap;
+}
+@media (max-width: 540px) {
+  .budget-edit-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .budget-edit-row > button {
+    grid-column: 1/-1;
+    justify-self: end;
+  }
+  .transaction-item .row-actions {
+    margin-left: auto;
+  }
+  .savings-foot {
+    gap: 12px;
+    flex-wrap: wrap;
   }
 }

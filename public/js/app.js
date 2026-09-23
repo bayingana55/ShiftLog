@@ -1,10 +1,17 @@
+import {
+  budgetEditor,
+  goalEditor,
+  balanceEditor,
+  recordsEditor,
+  projectionEditor,
+} from "./editors.js";
 import { api, icon, escape, toast, zone } from "./ui.js";
 import * as views from "./views.js";
 import { renderCharts, destroyCharts } from "./charts.js";
 import {
   shiftForm,
   transactionForm,
-  clockOutForm,
+  paycheckForm,
   confirmAction,
 } from "./forms.js";
 const main = document.querySelector("#main");
@@ -73,7 +80,6 @@ async function render() {
     main.innerHTML = pages[currentPage]();
     renderCharts(state);
     bindForms();
-    updateElapsed();
   } catch (error) {
     if (version !== requestVersion) return;
     main.innerHTML = `<section class="card card-pad"><h1>Let’s reconnect.</h1><p class="error-message" role="alert">${escape(error.message)}</p><button class="btn btn-primary" data-action="retry">Try again</button></section>`;
@@ -124,6 +130,32 @@ function bindForms() {
     toast("Savings goal updated.");
     await render();
   });
+  handleSubmit("coverage-form", async (data) => {
+    await api("/payroll-coverage", { method: "PUT", body: data });
+    toast("Payroll coverage updated.");
+    await render();
+  });
+  const coverageForm = document.querySelector("#coverage-form");
+  if (coverageForm) {
+    const update = () => {
+      coverageForm.elements.anchor_period_end.value =
+        state.payroll_coverage.find(
+          (c) => c.job_id === Number(coverageForm.elements.job_id.value),
+        )?.anchor_period_end || "";
+    };
+    coverageForm.elements.job_id.addEventListener("change", update);
+    update();
+  }
+  document
+    .querySelector("#spending-comparison")
+    ?.addEventListener("change", (event) => {
+      document.querySelector("#comparison-label").textContent =
+        event.target.value === "planned"
+          ? "Planned expenses"
+          : "Actual expenses";
+      destroyCharts();
+      renderCharts(state, event.target.value);
+    });
   handleSubmit("rate-form", async (data) => {
     for (const field of ["premium_start", "premium_end"]) {
       const [h, m] = data[field].split(":").map(Number);
@@ -150,13 +182,22 @@ function bindForms() {
       '<p class="muted">Dates changed. Preview again before importing.</p>';
   });
 }
-main.addEventListener("click", async (event) => {
+document.addEventListener("click", async (event) => {
   const target = event.target.closest("[data-action]");
   if (!target) return;
   const action = target.dataset.action,
     key = Number(target.dataset.id);
   try {
     if (action === "retry") return render();
+    if (action === "edit-budget") return budgetEditor(state, render);
+    if (action === "edit-goal") return goalEditor(state, render);
+    if (action === "set-savings") return balanceEditor(state, render);
+    if (action === "edit-projection") return projectionEditor(state);
+    if (action === "withdraw-savings")
+      return transactionForm(null, render, "withdrawal");
+    if (action.startsWith("manage-"))
+      return recordsEditor(action.slice(7), state);
+
     if (action === "add-shift") return shiftForm(state.jobs, null, render);
     if (action === "edit-shift")
       return shiftForm(
@@ -185,16 +226,24 @@ main.addEventListener("click", async (event) => {
         () => api(`/transactions/${key}`, { method: "DELETE" }),
         render,
       );
-    if (action === "clock-in") {
-      target.disabled = true;
-      await api("/clock-in", {
-        method: "POST",
-        body: { job_id: document.querySelector("#clock-job").value },
+    if (action === "add-paycheck")
+      return paycheckForm(state.jobs, null, render, {
+        job_id: target.dataset.job,
+        payday: target.dataset.payday,
       });
-      toast("You’re on the clock.");
-      return render();
-    }
-    if (action === "clock-out") return clockOutForm(state.active, render);
+    if (action === "edit-paycheck")
+      return paycheckForm(
+        state.jobs,
+        state.paychecks.find((p) => p.id === key),
+        render,
+      );
+    if (action === "delete-paycheck")
+      return confirmAction(
+        "Delete this paycheck?",
+        "This removes the recorded payment and updates actual cash flow. Shift earnings and savings deposits are unchanged.",
+        () => api(`/paychecks/${key}`, { method: "DELETE" }),
+        render,
+      );
     if (action.startsWith("filter-")) {
       const form = document.querySelector("#filter-form");
       if (action === "filter-reset") form.reset();
@@ -267,18 +316,8 @@ main.addEventListener("click", async (event) => {
     target.disabled = false;
   }
 });
-function updateElapsed() {
-  const el = document.querySelector("#elapsed");
-  if (!el) return;
-  const seconds = Math.max(
-    0,
-    Math.floor((Date.now() - new Date(el.dataset.start)) / 1000),
-  );
-  el.textContent = `${String(Math.floor(seconds / 3600)).padStart(2, "0")}:${String(Math.floor(seconds / 60) % 60).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")} elapsed`;
-}
-setInterval(updateElapsed, 1000);
 window.addEventListener("hashchange", render);
-// Re-sync clock state after another tab changes it or this tab returns from sleep.
+// Refresh records when returning from another tab.
 document.addEventListener("visibilitychange", () => {
   if (
     document.visibilityState === "visible" &&

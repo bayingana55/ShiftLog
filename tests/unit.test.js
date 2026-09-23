@@ -123,7 +123,7 @@ test("Timezone resolves UTC correctly, spring transition, and Vancouver permanen
   assert.equal(result.gross, 50);
 });
 test("History is deterministic, excludes unspecified Tuesdays and January Apple", () => {
-  const input = { from: "2026-01-01", to: "2026-09-18" },
+  const input = { from: "2026-01-01", to: "2026-09-17" },
     now = new Date("2026-09-19T20:00Z");
   const rows = generateHistory(input, jobs, now);
   assert.deepEqual(rows, generateHistory(input, jobs, now));
@@ -208,5 +208,125 @@ test("Home Depot premium ends exactly at 5:30 AM", () => {
   assert.equal(
     calculatePay(shift(2, "2026-09-18T05:00", "2026-09-18T06:00"), rules).gross,
     21.6,
+  );
+});
+
+import {
+  trackedMonths,
+  budgetForMonth,
+  payPeriods,
+  BUDGET_CATEGORIES,
+} from "../lib/planning.js";
+import {
+  paycheckInput,
+  nonnegativeAmount,
+  payRate,
+} from "../lib/validation.js";
+test("Nonnegative amounts accept consistently formatted zero values", () => {
+  for (const value of [0, "0", "0.0", "0.00", "00.00"])
+    assert.equal(nonnegativeAmount(value), 0);
+  for (const value of ["", " ", null, false, [], "0.000", "-1"])
+    assert.throws(() => nonnegativeAmount(value), { status: 400 });
+  assert.equal(nonnegativeAmount("12.34"), 12.34);
+});
+test("Pay rates respect the NUMERIC(10,2) database limit", () => {
+  assert.equal(payRate("99999999.99"), 99999999.99);
+  assert.equal(payRate("22.72"), 22.72);
+  for (const value of ["100000000", "999999999", "22.721"])
+    assert.throws(() => payRate(value), { status: 400 });
+});
+test("Reports start in January 2026 and expand beyond twelve months", () => {
+  assert.deepEqual(trackedMonths("2026-03-01"), [
+    "2026-01",
+    "2026-02",
+    "2026-03",
+  ]);
+  assert.equal(trackedMonths("2027-02-01").length, 14);
+});
+test("Budgets sum to $2150, with changes applied only from their effective month", () => {
+  const rates = BUDGET_CATEGORIES.map((category, i) => ({
+    category,
+    effective_from: "2026-01-01",
+    amount: [1500, 300, 150, 200][i],
+  }));
+  rates.push({ category: "Rent", effective_from: "2026-09-01", amount: 1600 });
+  assert.equal(
+    budgetForMonth(rates, "2026-08").reduce((n, r) => n + r.amount, 0),
+    2150,
+  );
+  assert.equal(
+    budgetForMonth(rates, "2026-09").reduce((n, r) => n + r.amount, 0),
+    2250,
+  );
+});
+test("Payday schedule uses September 18 anchor without inventing coverage", () => {
+  const periods = payPeriods(
+    [],
+    jobs,
+    { anchor_payday: "2026-09-18", interval_days: 14 },
+    [],
+    "2026-09-19",
+  );
+  assert.equal(periods[0].payday, "2026-01-09");
+  assert.ok(periods.some((p) => p.payday === "2026-10-02"));
+  assert.ok(
+    periods.every((p) => p.gross_estimate === null && p.period_start === null),
+  );
+  const dates = [...new Set(periods.map((p) => p.payday))];
+  for (let i = 1; i < dates.length; i++)
+    assert.equal((new Date(dates[i]) - new Date(dates[i - 1])) / 86400000, 14);
+});
+test("Only configured work periods assign shifts to estimated checks", () => {
+  const rows = payPeriods(
+    [
+      {
+        job_id: 1,
+        clock_in: instant("2026-09-01T08:00"),
+        clock_out: instant("2026-09-01T13:00"),
+        gross: 125,
+      },
+    ],
+    jobs,
+    { anchor_payday: "2026-09-18", interval_days: 14 },
+    [{ job_id: 1, anchor_period_end: "2026-09-12" }],
+    "2026-09-19",
+  );
+  const apple = rows.find((p) => p.job_id === 1 && p.payday === "2026-09-18");
+  assert.equal(apple.period_start, "2026-08-30");
+  assert.equal(apple.gross_estimate, 125);
+  assert.equal(
+    rows.find((p) => p.job_id === 2 && p.payday === "2026-09-18")
+      .gross_estimate,
+    null,
+  );
+});
+test("Manual paycheck accepts zero and unknown period but rejects partial dates", () => {
+  const p = paycheckInput({
+    job_id: 1,
+    payday: "2026-09-18",
+    actual_amount: 0,
+  });
+  assert.equal(p.actual_amount, 0);
+  assert.equal(p.period_start, null);
+  assert.equal(p.gross_amount, null);
+  assert.throws(() =>
+    paycheckInput({
+      job_id: 1,
+      payday: "2026-09-18",
+      actual_amount: 100,
+      period_start: "2026-09-01",
+    }),
+  );
+});
+test("Historical generator stops at Sep 17 and rejects Sep 18/19 imports", () => {
+  const rows = generateHistory(
+    { from: "2026-01-01", to: "2026-09-17" },
+    jobs,
+    new Date("2026-09-19T20:00Z"),
+  );
+  assert.equal(rows.length, 245);
+  assert.ok(rows.every((s) => localDate(s.clock_in) <= "2026-09-17"));
+  assert.throws(() =>
+    generateHistory({ from: "2026-01-01", to: "2026-09-18" }, jobs),
   );
 });

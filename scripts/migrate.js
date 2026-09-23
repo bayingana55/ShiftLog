@@ -11,6 +11,8 @@ export async function migrate(db = pool) {
     const migrations = [
       ["001", "001_shiftlog.sql"],
       ["002", "002_premium_end.sql"],
+      ["003", "003_work_planning.sql"],
+      ["004", "004_editable_finances.sql"],
     ];
     for (const [version, file] of migrations) {
       const exists = await client.query(
