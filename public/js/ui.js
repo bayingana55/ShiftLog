@@ -63,6 +63,10 @@ export function toast(message) {
   toast.timer = setTimeout(() => el.classList.remove("visible"), 4500);
 }
 export async function api(path, options = {}) {
+  if (document.documentElement.dataset.demo === "true") {
+    const { demoApi } = await import("./demo.js");
+    return demoApi(path, options);
+  }
   const response = await fetch(`/api${path}`, {
     ...options,
     headers: { "Content-Type": "application/json", ...options.headers },

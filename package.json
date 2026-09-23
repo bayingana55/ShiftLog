@@ -7,6 +7,8 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "build": "tailwindcss -i public/css/input.css -o public/css/app.css --minify",
+    "build:demo": "npm run build && node scripts/build-demo.js",
+    "test:demo": "playwright test --config playwright.demo.config.js",
     "css:watch": "tailwindcss -i public/css/input.css -o public/css/app.css --watch",
     "migrate": "node scripts/migrate.js",
     "test": "node --test tests/unit.test.js",

@@ -14,6 +14,7 @@ import {
   paycheckForm,
   confirmAction,
 } from "./forms.js";
+import { applyDemoControls, demoDate } from "./demo.js";
 const main = document.querySelector("#main");
 let state = {},
   currentPage = "",
@@ -80,6 +81,7 @@ async function render() {
     main.innerHTML = pages[currentPage]();
     renderCharts(state);
     bindForms();
+    applyDemoControls(main);
   } catch (error) {
     if (version !== requestVersion) return;
     main.innerHTML = `<section class="card card-pad"><h1>Let’s reconnect.</h1><p class="error-message" role="alert">${escape(error.message)}</p><button class="btn btn-primary" data-action="retry">Try again</button></section>`;
@@ -124,6 +126,7 @@ function bindForms() {
       currentPage === "shifts"
         ? views.shiftTable(rows)
         : views.transactionsTable(rows);
+    applyDemoControls(main);
   });
   handleSubmit("goal-form", async (data) => {
     await api("/savings-goal", { method: "PUT", body: data });
@@ -248,7 +251,7 @@ document.addEventListener("click", async (event) => {
       const form = document.querySelector("#filter-form");
       if (action === "filter-reset") form.reset();
       else {
-        const now = window.moment().tz(zone);
+        const now = window.moment(demoDate() || undefined).tz(zone);
         form.elements.from.value = now
           .clone()
           .startOf(action === "filter-week" ? "isoWeek" : "month")

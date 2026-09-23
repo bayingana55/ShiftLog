@@ -1,4 +1,16 @@
 @import "tailwindcss";
+
+.demo-banner {
+  padding: 12px 24px;
+  background: #edf3e3;
+  border-bottom: 1px solid #d5dfb7;
+  color: #173e36;
+  font-size: 14px;
+}
+[data-demo="true"] button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 @source "../index.html";
 @source "../js/*.js";
 @theme {

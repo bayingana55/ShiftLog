@@ -4,6 +4,40 @@ A personal work log and financial planning dashboard for multiple jobs. Record c
 
 Built with Express, PostgreSQL, and vanilla JavaScript for a BCIT CST portfolio. Tracked work and financial history starts **January 1, 2026**.
 
+## Public portfolio demo
+
+The repository includes a read-only GitHub Pages build with fictional records,
+separate from the PostgreSQL application. It displays a fixed September 22, 2026
+snapshot so the sample charts and quick date filters stay consistent over time.
+Navigation, filters, and chart comparisons work; saving and importing are disabled.
+The build uses the application's pay and summary calculations and never reads the
+personal database, `.env`, backups, or historical work importer.
+
+To publish:
+
+1. In repository **Settings → Pages → Build and deployment**, select **GitHub Actions**.
+2. Push the demo changes to `main`.
+3. Wait for **Actions → Deploy portfolio demo** to complete successfully.
+4. Use the deployed Pages URL for the portfolio's **Live demo** link. With the
+   current repository name and no custom domain, the expected address is
+   `https://bayingana55.github.io/ShiftLog/`.
+
+The workflow tests the app, builds only the demo assets, and publishes `dist-demo`.
+Subsequent pushes to `main` update the demo automatically. The full editable app
+still runs with `npm start` and PostgreSQL.
+
+For a local preview:
+
+```sh
+npm run build:demo
+node scripts/serve-demo.js
+# Open http://127.0.0.1:3102/ShiftLog/
+```
+
+Run the demo's desktop/mobile tests with `npm run test:demo` after building.
+Install Chromium first with `npx playwright install chromium`, or set
+`PLAYWRIGHT_CHROME_PATH` to an existing Chrome executable.
+
 ## Features
 
 - Responsive dashboard with weekly hours, gross earnings, planned/actual expenses, actual pay received, cash remaining, and savings progress.

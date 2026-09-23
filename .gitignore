@@ -1,5 +1,6 @@
 # Dependencies and test output
 node_modules/
+dist-demo/
 coverage/
 .nyc_output/
 test-results/
