@@ -11,15 +11,7 @@ test("Fictional demo loads every page under a repository path without backend re
   const requests = [];
   page.on("request", (request) => requests.push(request.url()));
   await page.goto("./");
-  for (const name of [
-    "dashboard",
-    "shifts",
-    "earnings",
-    "transactions",
-    "savings",
-    "analytics",
-    "settings",
-  ]) {
+  for (const name of ["dashboard", "shifts", "money", "settings"]) {
     await page.locator(`#navigation a[href="#${name}"]`).click();
     await expect(page.locator("#main h1")).toBeVisible();
     await expect(page.locator("#demo-banner")).toContainText(
@@ -53,7 +45,7 @@ test("Filters and charts work while saving is blocked", async ({ page }) => {
   ).toHaveCount(0);
   await page.getByRole("button", { name: "This week", exact: true }).click();
   await expect(page.locator("#filtered-results tbody tr")).toHaveCount(1);
-  await page.locator('#navigation a[href="#analytics"]').click();
+  await page.locator('#navigation a[href="#money"]').click();
   await expect(page.locator("#income-chart")).toBeVisible();
   expect(
     await page.evaluate(() => Object.keys(window.Chart.instances).length),

@@ -64,10 +64,7 @@ async function render() {
     const pages = {
       dashboard: () => views.dashboard(state, jobs),
       shifts: () => views.shiftsPage(state, jobs),
-      transactions: () => views.transactionsPage(state),
-      savings: () => views.savingsPage(state),
-      earnings: () => views.earningsPage(state),
-      analytics: () => views.analyticsPage(state),
+      money: () => views.moneyPage(state),
       settings: () => views.settingsPage(state, jobs, rates),
     };
     main.innerHTML = pages[currentPage]();
@@ -113,7 +110,8 @@ function bindForms() {
     const params = new URLSearchParams(
       Object.entries(data).filter(([, value]) => value),
     );
-    const rows = await api(`/${currentPage}?${params}`);
+    const list = currentPage === "shifts" ? "shifts" : "transactions";
+    const rows = await api(`/${list}?${params}`);
     document.querySelector("#filtered-results").innerHTML =
       currentPage === "shifts"
         ? views.shiftTable(rows)

@@ -85,7 +85,7 @@ test("Desktop and mobile: navigation, forms, work log, savings, imports, errors"
   await expect(
     page.getByRole("cell", { name: "$179.64", exact: true }),
   ).toBeVisible();
-  await navigate("Transactions");
+  await navigate("Money");
   await page
     .getByRole("button", { name: "Add transaction", exact: true })
     .click();
@@ -109,11 +109,7 @@ test("Desktop and mobile: navigation, forms, work log, savings, imports, errors"
     .getByRole("button", { name: "Delete", exact: true })
     .click();
   await expect(row).toHaveCount(0);
-  await navigate("Savings");
-  await page
-    .getByRole("button", { name: "Add savings", exact: true })
-    .first()
-    .click();
+  await page.getByRole("button", { name: "Add savings", exact: true }).click();
   await page.getByRole("dialog").getByLabel("Amount (CAD)").fill("500");
   await page
     .getByRole("dialog")
@@ -126,32 +122,16 @@ test("Desktop and mobile: navigation, forms, work log, savings, imports, errors"
   await page.getByLabel("Goal amount (CAD)").fill("1000");
   await page.getByRole("button", { name: "Save goal" }).click();
   await expect(page.getByLabel("Goal amount (CAD)")).toHaveValue("1000");
-  await navigate("Savings");
+  await navigate("Money");
   await navigate("Overview");
   await expect(page.getByText(/50% actually saved/)).toBeVisible();
-  for (const label of [
-    "Overview",
-    "Earnings",
-    "Analytics",
-    "Shifts",
-    "Transactions",
-    "Savings",
-    "Settings",
-  ]) {
+  for (const label of ["Overview", "Shifts", "Money", "Settings"]) {
     await navigate(label);
     await expect(page.locator("main")).not.toHaveAttribute("aria-busy", "true");
     await expect(page.locator("h1")).toBeVisible();
   }
   await page.setViewportSize({ width: 390, height: 844 });
-  for (const label of [
-    "Overview",
-    "Shifts",
-    "Earnings",
-    "Transactions",
-    "Savings",
-    "Analytics",
-    "Settings",
-  ]) {
+  for (const label of ["Overview", "Shifts", "Money", "Settings"]) {
     await navigate(label);
     await expect(page.locator("main")).not.toHaveAttribute("aria-busy", "true");
     const noOverflow = await page.evaluate(
@@ -189,12 +169,12 @@ test("Actual paycheck entry, missing versus zero, and chart labels", async ({
     await expect(page.locator("#breadcrumb")).toHaveText(label);
     await expect(page.locator("main")).not.toHaveAttribute("aria-busy", "true");
   };
-  await page.goto("/#earnings");
+  await page.goto("/#money");
   await expect(
-    page.getByRole("heading", { name: "Earnings & paychecks" }),
+    page.getByRole("heading", { name: "Money", exact: true }),
   ).toBeVisible();
   const checks = page.locator("section").filter({
-    has: page.getByRole("heading", { name: "Actual paychecks", exact: true }),
+    has: page.getByRole("heading", { name: "Paychecks", exact: true }),
   });
   for (const [job, amount] of [
     ["Apple", "1200"],
@@ -241,7 +221,7 @@ test("Actual paycheck entry, missing versus zero, and chart labels", async ({
   );
   expect(chart.labels[0]).toBe("Jan 2026");
   expect(chart.datasets[1].label).toBe("Expenses");
-  await navigate("Earnings");
+  await navigate("Money");
   const depot = checks.getByRole("row").filter({ hasText: "Home Depot" });
   await depot.getByRole("button", { name: "Delete", exact: true }).click();
   await page
@@ -260,7 +240,7 @@ test("Actual paycheck entry, missing versus zero, and chart labels", async ({
     .click();
   await navigate("Overview");
   await expect(actual).toContainText("$0.00");
-  await navigate("Earnings");
+  await navigate("Money");
   await apple.getByRole("button", { name: "Delete", exact: true }).click();
   await page
     .getByRole("dialog")
@@ -268,11 +248,6 @@ test("Actual paycheck entry, missing versus zero, and chart labels", async ({
     .click();
   await navigate("Overview");
   await expect(actual).toContainText("Not recorded");
-  await navigate("Analytics");
-  await expect(
-    page.getByRole("cell", { name: "Jan 2026", exact: true }).first(),
-  ).toBeVisible();
-  await expect(page.getByRole("cell", { name: /2025/ })).toHaveCount(0);
 });
 
 test("Overview provides direct editing, savings reduction, withdrawals, and expense removal", async ({

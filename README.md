@@ -44,8 +44,8 @@ Install Chromium first with `npx playwright install chromium`, or set
 - **Log shift** with explicit start/end dates and times, unpaid breaks, editing, confirmed deletion, and filters. Overnight shifts use the next calendar date for the end.
 - Centralized date-effective base/premium pay rules and precise or proportional unpaid-break allocation.
 - Actual paycheck CRUD by employer and payday, with optional gross amount and notes.
-- Expenses, savings deposits, and withdrawals.
-- January-2026-to-current-month charts of earnings, expenses, and the savings balance.
+- Four pages: **Overview**, **Shifts**, **Money** (paychecks, expenses, savings deposits and withdrawals), and **Settings**.
+- A January-2026-to-current-month chart of gross earnings vs. recorded expenses.
 - A configurable savings goal, initially **$28,000**.
 - Automated unit, PostgreSQL integration, and desktop/mobile browser tests.
 
@@ -100,7 +100,7 @@ server.js → routes/api.js → validation / pay / planning / summary modules
 PostgreSQL
 ```
 
-`lib/pay.js` owns gross earnings calculations. `lib/planning.js` owns the history start date and month sequence. `lib/data.js` builds the dashboard and chart data. `public/js/planning-views.js` renders cash-flow, and paycheck tables. The frontend displays server-calculated figures.
+`lib/pay.js` owns gross earnings calculations. `lib/planning.js` owns the history start date and month sequence. `lib/data.js` builds the dashboard and chart data. `public/js/planning-views.js` renders the paycheck table. The frontend displays server-calculated figures.
 
 ## Database design
 

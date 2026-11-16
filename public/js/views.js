@@ -1,4 +1,4 @@
-import { monthlyTable, paycheckTable, recorded } from "./planning-views.js";
+import { paycheckTable, recorded } from "./planning-views.js";
 import {
   icon,
   escape,
@@ -18,10 +18,7 @@ import {
 export const pages = [
   ["dashboard", "Overview", "dashboard"],
   ["shifts", "Shifts", "shifts"],
-  ["earnings", "Earnings", "earnings"],
-  ["transactions", "Transactions", "transactions"],
-  ["savings", "Savings", "savings"],
-  ["analytics", "Analytics", "analytics"],
+  ["money", "Money", "transactions"],
   ["settings", "Settings", "settings"],
 ];
 export function stat(label, value, note, iconName, actions = []) {
@@ -105,7 +102,7 @@ export function dashboard(s) {
         ["History", "manage-savings"],
       ],
     )}${stat("Remaining actual goal", money(s.remaining), `${s.progress}% actually saved · ${money(s.goal)} goal`, "analytics", [["Edit goal", "edit-goal"]])}</div>
-    <div class="dashboard-middle">${incomeCard()}${savingsCard(s)}</div><div class="dashboard-bottom"><section class="card"><div class="card-head card-header-padded"><div><h2>Recent shifts</h2><p>Your latest work entries</p></div><a class="btn-link" href="#shifts">View all →</a></div>${shiftTable(s.recent_shifts, true)}</section><section class="card"><div class="card-head card-header-padded"><div><h2>Recent transactions</h2><p>Actual expenses and savings deposits</p></div><a class="btn-link" href="#transactions">View all →</a></div>${recentTransactions(s.recent_transactions)}</section></div>`
+    <div class="dashboard-middle">${incomeCard()}${savingsCard(s)}</div><div class="dashboard-bottom"><section class="card"><div class="card-head card-header-padded"><div><h2>Recent shifts</h2><p>Your latest work entries</p></div><a class="btn-link" href="#shifts">View all →</a></div>${shiftTable(s.recent_shifts, true)}</section><section class="card"><div class="card-head card-header-padded"><div><h2>Recent transactions</h2><p>Actual expenses and savings deposits</p></div><a class="btn-link" href="#money">View all →</a></div>${recentTransactions(s.recent_transactions)}</section></div>`
   );
 }
 
@@ -128,50 +125,15 @@ export function transactionsTable(rows) {
   if (!rows.length) return empty("No transactions match this view.");
   return `<div class="table-scroll"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th><th>Actions</th></tr></thead><tbody>${rows.map((t) => `<tr><td>${dateOnly(t.date)}</td><td><strong>${escape(t.description || "—")}</strong></td><td>${escape(t.category)}</td><td><span class="badge">${t.type === "savings" ? "Savings deposit" : t.type === "withdrawal" ? "Savings withdrawal" : "Expense"}</span></td><td><strong>${money(t.amount)}</strong></td><td><div class="row-actions"><button class="btn btn-sm" data-action="edit-transaction" data-id="${t.id}">Edit</button><button class="btn btn-sm btn-danger" data-action="delete-transaction" data-id="${t.id}">Delete</button></div></td></tr>`).join("")}</tbody></table></div>`;
 }
-export function transactionsPage(s) {
+export function moneyPage(s) {
   return (
     heading(
       "KNOW WHERE IT GOES",
-      "Spending & transactions",
-      "Record what you actually spend.",
+      "Money",
+      "Paychecks in, expenses out, and what you set aside.",
       button("Add transaction", "add-transaction"),
     ) +
-    `<div class="stat-grid">${stat("Actual spent this month", money(s.spending_month), "Recorded expenses only", "transactions")}${stat("Actual cash remaining", recorded(s.cash_remaining_month), "Recorded pay − actual expenses", "earnings")}</div><section class="card card-pad">${filters("transactions")}<div id="filtered-results">${transactionsTable(s.all_transactions)}</div></section>`
-  );
-}
-
-export function savingsPage(s) {
-  return (
-    heading(
-      "BUILD SOMETHING BIGGER",
-      "Savings goal",
-      "Money you have actually set aside.",
-      button("Add savings", "add-savings"),
-    ) +
-    `<div class="section-grid">${savingsCard(s)}<section class="card card-pad"><div class="card-head"><div><h2>Savings balance</h2><p>Cumulative · Since Jan 2026</p></div></div><div class="chart-wrap"><canvas id="savings-chart" role="img" aria-label="Cumulative savings balance since January 2026"></canvas></div></section></div><section class="card section-spacer"><div class="card-head card-header-padded"><h2>Monthly savings detail</h2></div>${monthlyTable(s, true)}</section><section class="card card-pad section-spacer"><div class="card-head"><h2>Savings history</h2><div class="manager-toolbar"><button class="btn" data-action="withdraw-savings">Withdraw savings</button><button class="btn" data-action="edit-goal">Edit goal</button></div></div>${transactionsTable(s.all_transactions.filter((t) => ["savings", "withdrawal"].includes(t.type)))}</section>`
-  );
-}
-
-export function earningsPage(s) {
-  return (
-    heading(
-      "THE VALUE OF YOUR TIME",
-      "Earnings & paychecks",
-      "Gross earned from work and actual money received, side by side.",
-      button("Record paycheck", "add-paycheck"),
-    ) +
-    `<div class="stat-grid">${stat("Gross this week", money(s.gross_week), "Completed shifts", "earnings")}${stat("Gross this month", money(s.gross_month), "Attributed to shift start date", "earnings")}${stat("Actual received this month", recorded(s.actual_pay_month), "Recorded paychecks · May be incomplete", "wallet")}${stat("Gross since Jan 2026", money(s.by_job.reduce((v, j) => v + j.earnings, 0)), "Logged shifts, not payment dates", "analytics")}</div><section class="card card-pad mb-6"><div class="card-head"><h2>Actual paychecks</h2></div>${paycheckTable(s)}</section><div class="section-grid">${incomeCard("earnings-chart", "Gross earnings by month")}<section class="card card-pad"><div class="card-head"><h2>Earnings by employer · Since Jan 2026</h2></div>${s.by_job.map((j) => `<div class="rate-row"><div><strong>${escape(j.name)}</strong><small>${hours(j.hours)} paid hours</small></div><strong>${money(j.earnings)}</strong></div>`).join("")}</section></div><section class="card section-spacer"><div class="card-head card-header-padded"><h2>Monthly earnings and cash flow</h2></div>${monthlyTable(s)}</section><section class="card section-spacer"><div class="card-head card-header-padded"><h2>Earnings by shift</h2></div>${shiftTable(s.all_shifts)}</section>`
-  );
-}
-
-export function analyticsPage(s) {
-  return (
-    heading(
-      "SPOT THE PATTERNS",
-      "Your work, in perspective",
-      "Earnings, expenses, and savings since January 2026.",
-    ) +
-    `<div class="section-grid">${incomeCard()}<section class="card card-pad"><div class="card-head"><div><h2>Savings balance</h2><p>Cumulative · Since Jan 2026</p></div></div><div class="chart-wrap"><canvas id="savings-chart" role="img" aria-label="Cumulative savings balance"></canvas></div></section><section class="card card-pad"><div class="card-head"><h2>Paid hours by job · Since Jan 2026</h2></div><div class="chart-wrap"><canvas id="hours-chart" role="img" aria-label="Paid hours by job"></canvas></div><p class="chart-summary">${s.by_job.map((j) => `${escape(j.name)}: ${hours(j.hours)} hrs`).join(" · ")}</p></section><section class="card card-pad"><div class="card-head"><h2>Gross earnings by job · Since Jan 2026</h2></div><div class="chart-wrap"><canvas id="job-earnings-chart" role="img" aria-label="Gross earnings by job"></canvas></div><p class="chart-summary">${s.by_job.map((j) => `${escape(j.name)}: ${money(j.earnings)}`).join(" · ")}</p></section></div><section class="card section-spacer"><div class="card-head card-header-padded"><h2>Monthly earnings, expenses & cash flow</h2></div>${monthlyTable(s)}<p class="table-note">Actual pay totals reflect only recorded paychecks and may be incomplete. Missing data is not zero income. Cash remaining is not a savings deposit.</p></section><section class="card section-spacer"><div class="card-head card-header-padded"><h2>Monthly savings</h2></div>${monthlyTable(s, true)}</section>`
+    `<div class="section-grid">${savingsCard(s)}${incomeCard()}</div><section class="card card-pad section-spacer"><div class="card-head"><h2>Paychecks</h2>${button("Record paycheck", "add-paycheck", "btn-secondary")}</div>${paycheckTable(s)}</section><section class="card card-pad section-spacer"><div class="card-head"><h2>Expenses and savings</h2></div>${filters("transactions")}<div id="filtered-results">${transactionsTable(s.all_transactions)}</div></section>`
   );
 }
 

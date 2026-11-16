@@ -57,53 +57,12 @@ export function renderCharts(summary) {
       },
     ],
   };
-  for (const id of ["income-chart", "earnings-chart"])
-    chart(id, "bar", incomeData, {
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: { label: (c) => `${c.dataset.label}: ${money(c.raw)}` },
-        },
+  chart("income-chart", "bar", incomeData, {
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: { label: (c) => `${c.dataset.label}: ${money(c.raw)}` },
       },
-    });
-  chart("hours-chart", "bar", {
-    labels: summary.by_job.map((j) => j.name),
-    datasets: [
-      {
-        label: "Paid hours",
-        data: summary.by_job.map((j) => j.hours),
-        backgroundColor: ["#527753", "#d9b48c"],
-        borderRadius: 6,
-        maxBarThickness: 55,
-      },
-    ],
-  });
-  chart("job-earnings-chart", "bar", {
-    labels: summary.by_job.map((j) => j.name),
-    datasets: [
-      {
-        label: "Gross earnings (CAD)",
-        data: summary.by_job.map((j) => j.earnings),
-        backgroundColor: ["#527753", "#d9b48c"],
-        borderRadius: 6,
-        maxBarThickness: 55,
-      },
-    ],
-  });
-  chart("savings-chart", "line", {
-    labels: monthly.map((m) =>
-      window.moment.utc(`${m.month}-01`).format("MMM YYYY"),
-    ),
-    datasets: [
-      {
-        label: "Savings balance",
-        data: monthly.map((m) => m.saved_total),
-        borderColor: "#527753",
-        backgroundColor: "#52775315",
-        fill: true,
-        tension: 0.2,
-        pointRadius: 3,
-      },
-    ],
+    },
   });
 }

@@ -1,19 +1,6 @@
 import { money, escape, dateOnly } from "./ui.js";
-export const monthLabel = (value) =>
-  window.moment.utc(`${value}-01`).format("MMM YYYY");
 export const recorded = (value) =>
   value === null || value === undefined ? "Not recorded" : money(value);
-export function monthlyTable(s, savings = false) {
-  const headings = savings
-    ? ["Net savings change", "Savings balance"]
-    : [
-        "Gross earned",
-        "Actual expenses",
-        "Actual pay received",
-        "Actual cash remaining",
-      ];
-  return `<div class="table-scroll"><table><thead><tr><th>Month</th>${headings.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${s.monthly.map((m) => `<tr><td>${monthLabel(m.month)}</td>${(savings ? [money(m.savings), money(m.saved_total)] : [money(m.income), money(m.spending), recorded(m.actual_pay) + (m.paycheck_count ? `<small>${m.paycheck_count} paycheck(s) recorded</small>` : ""), recorded(m.cash_remaining)]).map((v) => `<td>${v}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
-}
 export function paycheckTable(s) {
   if (!s.paychecks.length)
     return '<p class="empty-state">No paychecks recorded yet.</p>';
