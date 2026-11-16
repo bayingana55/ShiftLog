@@ -125,43 +125,6 @@ export function api(db) {
       }),
     );
   });
-  router.post("/clock-in", async (req, res) => {
-    const s = shiftInput({
-      job_id: req.body.job_id,
-      clock_in: new Date().toISOString(),
-    });
-    res.status(201).json(
-      await write(db, async (c) => {
-        await validateShift(c, s);
-        return insertShift(c, { ...s, source: "clock" });
-      }),
-    );
-  });
-  router.patch("/shifts/:id/clock-out", async (req, res) => {
-    const shiftId = id(req.params.id);
-    res.json(
-      await write(db, async (c) => {
-        const current = (
-          await c.query("SELECT * FROM shifts WHERE id=$1", [shiftId])
-        ).rows[0];
-        check(current, "Shift not found.", 404);
-        check(!current.clock_out, "Shift is already clocked out.", 409);
-        const s = shiftInput({
-          ...current,
-          clock_in: current.clock_in.toISOString(),
-          clock_out: new Date().toISOString(),
-          break_minutes: req.body.break_minutes ?? 0,
-          break_start: req.body.break_start,
-        });
-        return (
-          await c.query(
-            "UPDATE shifts SET clock_out=$1,break_minutes=$2,break_start=$3 WHERE id=$4 RETURNING *",
-            [s.clock_out, s.break_minutes, s.break_start, shiftId],
-          )
-        ).rows[0];
-      }),
-    );
-  });
   router.patch("/shifts/:id", async (req, res) => {
     const shiftId = id(req.params.id);
     res.json(
@@ -360,10 +323,6 @@ export function api(db) {
     ),
   );
   router.get("/dashboard", async (req, res) => res.json(await getSummary(db)));
-  router.get("/analytics", async (req, res) => {
-    const { monthly, by_job, history_start } = await getSummary(db);
-    res.json({ monthly, by_job, history_start });
-  });
   router.get("/budget", async (req, res) =>
     res.json(
       (

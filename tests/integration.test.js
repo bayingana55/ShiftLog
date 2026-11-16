@@ -109,30 +109,6 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
         await send(`/api/shifts/${shift.id}`, "DELETE", undefined, 404);
       },
     );
-    await t.test(
-      "concurrent clock-ins allow one active shift; clock-out updates it",
-      async () => {
-        const results = await Promise.all([
-          request("/api/clock-in", "POST", { job_id: apple }),
-          request("/api/clock-in", "POST", { job_id: depot }),
-        ]);
-        assert.deepEqual(results.map((r) => r.status).sort(), [201, 409]);
-        const active = results.find((r) => r.status === 201).body;
-        await send(`/api/shifts/${active.id}/clock-out`, "PATCH", {
-          break_minutes: 0,
-        });
-        await send(
-          `/api/shifts/${active.id}/clock-out`,
-          "PATCH",
-          { break_minutes: 0 },
-          409,
-        );
-        assert.equal(
-          (await send("/api/shifts")).filter((s) => !s.clock_out).length,
-          0,
-        );
-      },
-    );
     await t.test("expense CRUD, savings deposit and savings goal", async () => {
       const tx = await send(
         "/api/transactions",
@@ -170,7 +146,7 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
       );
     });
     await t.test(
-      "dashboard aggregates match shifts; analytics starts in January 2026",
+      "dashboard aggregates match shifts; monthly rows start in January 2026",
       async () => {
         const s = await send("/api/dashboard"),
           shifts = await send("/api/shifts");
@@ -178,13 +154,8 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
           .filter((x) => x.clock_out && localDate(x.clock_in) >= s.period.month)
           .reduce((n, x) => n + x.gross, 0);
         assert.equal(s.gross_month, Math.round(expected * 100) / 100);
-        const analytics = await send("/api/analytics");
-        assert.equal(analytics.monthly[0].month, "2026-01");
-        assert.equal(
-          analytics.monthly.at(-1).month,
-          s.period.month.slice(0, 7),
-        );
-        assert.equal(s.payroll.available, false);
+        assert.equal(s.monthly[0].month, "2026-01");
+        assert.equal(s.monthly.at(-1).month, s.period.month.slice(0, 7));
       },
     );
     await t.test(
@@ -513,7 +484,7 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
       "invalid JSON, SQL-like IDs and cross-origin writes are rejected",
       async () => {
         await send("/api/shifts/1%20OR%201=1", "DELETE", undefined, 400);
-        const cross = await fetch(base + "/api/clock-in", {
+        const cross = await fetch(base + "/api/shifts", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -522,7 +493,7 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
           body: JSON.stringify({ job_id: apple }),
         });
         assert.equal(cross.status, 403);
-        const invalid = await fetch(base + "/api/clock-in", {
+        const invalid = await fetch(base + "/api/shifts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: "{",

@@ -51,7 +51,7 @@ Install Chromium first with `npx playwright install chromium`, or set
 - A configurable savings goal, initially **$28,000**.
 - Automated unit, PostgreSQL integration, and desktop/mobile browser tests.
 
-The application is a completed-work log. Legacy clock endpoints remain for API compatibility; there is no clock-in/out workflow or elapsed timer in the UI.
+The application is a completed-work log: you enter each shift after it ends. There is no clock-in/out timer.
 
 ## Screenshots
 
@@ -207,9 +207,8 @@ All routes below use `/api`. Writes accept JSON. Successful deletes return 204; 
 | `GET/PUT /budget`                                          | Date-effective budget rows; writes use `{ effective_from, items: [{ category, amount }] }` |
 | `GET/PUT /savings-goal`                                    | Read/set `{ amount }`                                                                      |
 | `GET/PUT /pay-rates`                                       | Read/upsert rules by employer/effective date                                               |
-| `GET /dashboard`, `GET /analytics`                         | Financial summaries and January-start monthly chart data                                   |
+| `GET /dashboard`                                           | Financial summaries and January-start monthly chart data                                   |
 | `POST /history/preview`, `POST /history/import`            | Range preview and selected import keys, bounded to Jan 1–Sep 17                            |
-| `POST /clock-in`, `PATCH /shifts/:id/clock-out`            | Legacy API compatibility only; not used by the UI                                          |
 
 An actual paycheck can be recorded without knowing its covered work dates:
 
@@ -266,7 +265,7 @@ Tests create uniquely named schemas in the separate test database and clean up o
 
 Install dependencies, build CSS, configure a secret database URL and host/port, run migrations as a release step, and start Node behind HTTPS. Use the PostgreSQL provider's verified TLS settings. Serve the frontend/API from the same origin.
 
-The co-op version intentionally excludes tax/CPP/EI calculations, overtime, employer contributions, and authentication. `lib/payroll.js` returns unavailable net-pay estimation; actual received amounts can still be recorded from deposits without calculating deductions. Keep real financial data private; a public interactive demo needs disposable data or access controls.
+The co-op version intentionally excludes tax/CPP/EI calculations, overtime, employer contributions, and authentication. Actual received amounts are recorded from deposits without calculating deductions. Keep real financial data private; a public interactive demo needs disposable data or access controls.
 
 Other limitations: no multi-goal budgeting, no CSV import/export, no job-creation UI, no immutable payroll snapshots, and no automatic cutoff/holiday-payday inference. Budget plans apply to whole months. Summaries calculate personal records in Node; larger datasets need pagination and cached aggregates. Browser timezone data covers 1970–2030 and should be kept current. Actual cash remaining excludes transfers into savings; those are shown separately as deposits.
 

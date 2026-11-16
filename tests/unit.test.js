@@ -4,7 +4,6 @@ import { calculatePay } from "../lib/pay.js";
 import { instant, localDate } from "../lib/time.js";
 import { generateHistory } from "../lib/history.js";
 import { shiftInput, transactionInput } from "../lib/validation.js";
-import { estimatePayroll } from "../lib/payroll.js";
 const jobs = [
   { id: 1, name: "Apple" },
   { id: 2, name: "Home Depot" },
@@ -193,9 +192,6 @@ test("Validation rejects invalid timestamps, dates, fractional breaks and money"
     "Savings",
   );
 });
-test("Payroll remains explicitly unavailable", () =>
-  assert.equal(estimatePayroll().net_pay, null));
-
 test("Home Depot premium ends exactly at 5:30 AM", () => {
   assert.equal(
     calculatePay(shift(2, "2026-09-18T05:00", "2026-09-18T05:30"), rules).gross,
