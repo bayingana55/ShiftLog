@@ -1,230 +1,149 @@
 # ShiftLog
 
-A personal work log and financial planning dashboard for multiple jobs. Record completed shifts, calculate gross earnings, track actual paychecks and spending, and follow savings toward a goal.
+A personal work log for two part-time jobs. Log each shift after it ends, see what it earned, record paychecks and expenses, and track savings toward a goal.
 
-Built with Express, PostgreSQL, and vanilla JavaScript for a BCIT CST portfolio. Tracked work and financial history starts **January 1, 2026**.
-
-## Public portfolio demo
-
-The repository includes a read-only GitHub Pages build with fictional records,
-separate from the PostgreSQL application. It displays a fixed September 22, 2026
-snapshot so the sample charts and quick date filters stay consistent over time.
-Navigation, filters, and charts work; saving is disabled.
-The build uses the application's pay and summary calculations and never reads the
-personal database, `.env`, or backups.
-
-To publish:
-
-1. In repository **Settings → Pages → Build and deployment**, select **GitHub Actions**.
-2. Push the demo changes to `main`.
-3. Wait for **Actions → Deploy portfolio demo** to complete successfully.
-4. Use the deployed Pages URL for the portfolio's **Live demo** link. With the
-   current repository name and no custom domain, the expected address is
-   `https://bayingana55.github.io/ShiftLog/`.
-
-The workflow tests the app, builds only the demo assets, and publishes `dist-demo`.
-Subsequent pushes to `main` update the demo automatically. The full editable app
-still runs with `npm start` and PostgreSQL.
-
-For a local preview:
-
-```sh
-npm run build:demo
-node scripts/serve-demo.js
-# Open http://127.0.0.1:3102/ShiftLog/
-```
-
-Run the demo's desktop/mobile tests with `npm run test:demo` after building.
-Install Chromium first with `npx playwright install chromium`, or set
-`PLAYWRIGHT_CHROME_PATH` to an existing Chrome executable.
-
-## Features
-
-- Responsive dashboard with four numbers: hours this week, gross earned this month, spent this month, and saved vs. goal.
-- **Log shift** with explicit start/end dates and times, unpaid breaks, editing, confirmed deletion, and filters. Overnight shifts use the next calendar date for the end.
-- Centralized date-effective base/premium pay rules and precise or proportional unpaid-break allocation.
-- Actual paycheck CRUD by employer and payday, with optional gross amount and notes.
-- Four pages: **Overview**, **Shifts**, **Money** (paychecks, expenses, savings deposits and withdrawals), and **Settings**.
-- A January-2026-to-current-month chart of gross earnings vs. recorded expenses.
-- A configurable savings goal, initially **$28,000**.
-- Automated unit, PostgreSQL integration, and desktop/mobile browser tests.
-
-The application is a completed-work log: you enter each shift after it ends. There is no clock-in/out timer.
-
-## Screenshots
+Built with Express, PostgreSQL, and vanilla JavaScript as a BCIT CST portfolio project. Tracked history starts **January 1, 2026**.
 
 ![ShiftLog desktop overview](docs/screenshots/dashboard-desktop.png)
 
 <img src="docs/screenshots/dashboard-mobile.png" alt="ShiftLog mobile overview" width="320">
 
-## Financial concepts
-
-| Concept             | Source / calculation                                                |
-| ------------------- | ------------------------------------------------------------------- |
-| Gross earnings      | Completed logged shifts × applicable pay rates, minus unpaid breaks |
-| Actual pay received | Amounts manually recorded against each employer/payday              |
-| Actual expenses     | Recorded expense transactions                                       |
-| Actual savings      | Recorded savings deposits minus withdrawals                         |
-
-Actual savings progress and remaining goal use deposits minus withdrawals.
-
 ## Pages
 
-- **Overview:** four cards (hours this week, gross earned this month, spent this month, saved vs. goal) and **Log shift** / **Add expense** buttons.
-- **Shifts:** every shift with filters, edit, and delete.
-- **Money:** savings goal progress, the earned-vs-spent chart, paychecks, and expenses/savings deposits/withdrawals with filters.
-- **Settings:** savings goal and pay rates.
+| Page         | What it shows                                                                                             |
+| ------------ | --------------------------------------------------------------------------------------------------------- |
+| **Overview** | Four numbers: hours this week, gross earned this month, spent this month, saved vs. goal                  |
+| **Shifts**   | Every shift with filters, edit, and delete                                                                |
+| **Money**    | Savings goal progress, an earned-vs-spent chart, paychecks, and a filterable list of expenses and savings |
+| **Settings** | The savings goal and each job's pay rates                                                                 |
 
-Deletes require confirmation. A change that would make the savings balance negative is rejected; correct the related withdrawal before deleting a deposit it depends on. Withdrawals are not expenses; record an expense separately if withdrawn savings was spent.
+## How the numbers are calculated
 
-## Paydays and paychecks
+| Number         | Calculation                                                              |
+| -------------- | ------------------------------------------------------------------------ |
+| Gross earned   | Each shift's paid time × the pay rate in effect, minus unpaid breaks     |
+| Spent          | Sum of recorded expenses                                                 |
+| Saved          | Savings deposits minus withdrawals                                       |
+| Saved vs. goal | Saved ÷ goal, as a percentage                                            |
+| Paychecks      | Amounts you record from your bank deposit; the payslip gross is optional |
 
-A paycheck record stores the employer, payday, the amount actually received, an optional gross amount copied from the payslip, and notes. One record is allowed per employer and payday, so both jobs can have a record on the same date. A recorded zero means $0 was received.
+A shift belongs to the date it **starts**, so an overnight shift counts in the week and month it began. Weeks start on Monday. All times use the `America/Vancouver` timezone.
 
-## Tech stack and architecture
+### Pay rules
 
-HTML, compiled Tailwind CSS/component CSS, vanilla JavaScript ES modules, Chart.js, Node.js 22+, Express 5, PostgreSQL, `pg`, and `dotenv`. Moment Timezone provides consistent Vancouver timezone data on the server and browser. Playwright and Prettier are development tooling. No frontend framework or ORM.
+Each job has date-effective pay rates: a base rate, plus an optional premium rate for a time window that can cross midnight. Apple pays $25/hour. Home Depot pays $20.47/hour, and $22.72/hour between 22:00 and 05:30. A raise is a new rate with a later "effective from" date, so older shifts keep their original pay.
+
+`lib/pay.js` walks through a shift one minute at a time and adds each minute to the rate that applies then. An unpaid break with a known start time is subtracted from the minutes it covers. Without a start time, it is spread proportionally across the shift.
+
+- Apple 8 AM–1 PM, no break: **$125.00**
+- Apple 10 AM–7 PM with a 60-minute break: **$200.00**
+- Home Depot 9 PM–5:30 AM with an untimed 30-minute break: **$179.64**
+- The same Home Depot shift with its break at 1 AM: **$179.51**
+
+### Rules the app enforces
+
+- Shifts cannot overlap, end before they start, be in the future, or last over 48 hours.
+- Savings can never go below zero. Deleting a deposit that a later withdrawal depends on is rejected.
+- One paycheck per employer per payday. A recorded $0 is kept as a real zero.
+- Deletes ask for confirmation.
+
+Every write runs in a database transaction with a lock, so two requests at the same moment cannot both pass these checks.
+
+## Architecture
 
 ```text
-Browser: public/index.html + public/js modules
+Browser: public/index.html + public/js/*.js
                   │ fetch /api/* (JSON)
                   ▼
-server.js → routes/api.js → validation / pay / planning / summary modules
-                  │ parameterized pg queries
+server.js → routes/api.js → lib/validation.js, lib/pay.js, lib/data.js
+                  │ parameterized SQL (pg)
                   ▼
 PostgreSQL
 ```
 
-`lib/pay.js` owns gross earnings calculations. `lib/planning.js` owns the history start date and month sequence. `lib/data.js` builds the dashboard and chart data. The frontend displays server-calculated figures.
+| File                 | Responsibility                                       |
+| -------------------- | ---------------------------------------------------- |
+| `server.js`          | Express app, security headers, error responses       |
+| `routes/api.js`      | REST routes and transaction locking                  |
+| `lib/validation.js`  | Checks every input before it reaches the database    |
+| `lib/pay.js`         | Gross pay for one shift                              |
+| `lib/data.js`        | Loads records and calculates the dashboard numbers   |
+| `lib/time.js`        | Vancouver dates and times                            |
+| `public/js/app.js`   | Page routing and button handling                     |
+| `public/js/views.js` | HTML for each page                                   |
+| `public/js/forms.js` | Pop-up forms for shifts, transactions, and paychecks |
 
-## Database design
+The server does every calculation; the browser only displays the results. There is no frontend framework or ORM.
 
-| Table               | Purpose                                                                             |
-| ------------------- | ----------------------------------------------------------------------------------- |
-| `jobs`              | Employer identities and preserved original wage field                               |
-| `shifts`            | Start/end instants, break duration/start, `source` (manual or schedule); FK to jobs |
-| `pay_rates`         | Date-effective base/premium rules; authoritative for earnings                       |
-| `transactions`      | Actual expenses, savings deposits, or withdrawals, with a local calendar date       |
-| `savings_goals`     | Singleton savings target                                                            |
-| `budget_rates`      | No longer used by the app; to be dropped                                            |
-| `payroll_schedule`  | No longer used by the app; to be dropped                                            |
-| `payroll_coverage`  | No longer used by the app; to be dropped                                            |
-| `paychecks`         | Actual amount, optional gross, notes, creation/update timestamps; FK to jobs        |
-| `schema_migrations` | Applied migration versions                                                          |
+## Database
 
-Migrations are transactional and safe to rerun. `001` preserves existing jobs/shifts and interprets original timestamp-without-zone values as Vancouver wall times when converting to `TIMESTAMPTZ`. Review that assumption before migrating a different legacy database. `002` sets the confirmed Home Depot premium cutoff to 05:30. `003` adds budgets, payday/coverage settings, and actual paychecks. `004` adds withdrawal support and permits custom budget category names. It does not insert actual purchases or payments.
+| Table           | Purpose                                                                      |
+| --------------- | ---------------------------------------------------------------------------- |
+| `jobs`          | The two employers                                                            |
+| `shifts`        | Start, end, unpaid break, and `source` (`manual`, or `schedule` if imported) |
+| `pay_rates`     | Base/premium rates per job, each with an effective-from date                 |
+| `transactions`  | Expenses, savings deposits, and savings withdrawals                          |
+| `paychecks`     | Employer, payday, amount received, optional gross, notes                     |
+| `savings_goals` | The single savings goal                                                      |
 
-The original `jobs.hourly_wage` remains for compatibility; Settings changes `pay_rates`. Database constraints enforce valid durations, breaks, amounts, and one actual paycheck per employer/payday. Shift writes use a transaction lock and overlap checks, with an additional database index protecting legacy active shifts.
+Migrations in `sql/` run in order through `npm run migrate`, each inside a transaction. Each one runs only once, and applied versions are recorded in `schema_migrations`. Old migrations are never edited; a change is a new file. `005_simplify.sql` removed the tables and columns for features that were cut, and made a shift's end time required. **Back up the database before running a migration that drops data.**
 
-## Local installation
+Shifts from January 1 to September 17, 2026 were imported once from a regular schedule. They show a **Schedule estimate** label so days that differed can be corrected.
 
-Requirements: Node.js 22+, npm, and a running PostgreSQL server.
+## Running it locally
+
+Requirements: Node.js 22+ and a running PostgreSQL server.
 
 ```sh
 npm ci
 cp .env.example .env
-createdb shiftlog  # only if the database does not already exist
+createdb shiftlog   # first time only
 npm run migrate
 npm run build
-npm start
+npm start           # http://127.0.0.1:3000
 ```
 
-Open **http://127.0.0.1:3000**. Existing installations only need pending migrations and the rebuilt frontend; do not recreate the database.
+| Variable                 | Purpose                                                               |
+| ------------------------ | --------------------------------------------------------------------- |
+| `DATABASE_URL`           | Database connection; defaults to the local `shiftlog` database        |
+| `PORT` / `HOST`          | Defaults `3000` / `127.0.0.1`                                         |
+| `TEST_DATABASE_URL`      | Separate test database; its name must end in `_test`                  |
+| `PLAYWRIGHT_CHROME_PATH` | Use an installed Chrome for browser tests instead of Playwright's own |
 
-### Environment variables
-
-| Variable                 | Purpose                                                                                     |
-| ------------------------ | ------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`           | Optional deployment connection; otherwise local database `shiftlog` and pg/OS-user defaults |
-| `PORT`                   | Default `3000`                                                                              |
-| `HOST`                   | Default `127.0.0.1`; use `0.0.0.0` in a hosted container                                    |
-| `PGSSLMODE`              | Provider-specific TLS configuration, if required                                            |
-| `TEST_DATABASE_URL`      | Dedicated test database; name must end in `_test`                                           |
-| `PLAYWRIGHT_CHROME_PATH` | Optional existing Chrome executable for browser tests                                       |
-
-Standard pg variables such as `PGHOST`, `PGUSER`, and `PGPASSWORD` also work. `.env`, keys, local credentials, backups, and dependencies are ignored. `.env.example` contains placeholders only.
-
-### Commands
-
-| Command                                   | Purpose                                              |
-| ----------------------------------------- | ---------------------------------------------------- |
-| `npm start` / `npm run dev`               | Start Express / restart backend on changes           |
-| `npm run build` / `npm run css:watch`     | Compile styles / watch frontend styles               |
-| `npm run migrate`                         | Apply pending migrations                             |
-| `npm test`                                | Unit tests, no database needed                       |
-| `npm run test:integration`                | Real PostgreSQL API tests in disposable test schemas |
-| `npm run test:e2e`                        | Browser workflows on desktop/mobile                  |
-| `npm run format` / `npm run format:check` | Format source / check formatting                     |
-
-## API overview
-
-All routes below use `/api`. Writes accept JSON. Successful deletes return 204; errors return `{ "error": "Useful message" }`. SQL values are parameterized and validation runs on the server.
-
-| Routes                                                     | Purpose                                                                  |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `GET /jobs`                                                | Employer list                                                            |
-| `GET /shifts?job_id=&from=&to=`                            | Joined work entries with paid hours, gross, and break method             |
-| `POST /shifts`, `PATCH /shifts/:id`, `DELETE /shifts/:id`  | Manual work-log CRUD; creation requires an end timestamp                 |
-| `GET/POST /transactions`, `PATCH/DELETE /transactions/:id` | Expense/deposit/withdrawal CRUD; reads accept type/category/date filters |
-| `GET/POST /paychecks`, `PATCH/DELETE /paychecks/:id`       | Actual-paycheck CRUD; gross amount is optional                           |
-| `GET/PUT /savings-goal`                                    | Read/set `{ amount }`                                                    |
-| `GET/PUT /pay-rates`                                       | Read/upsert rules by employer/effective date                             |
-| `GET /dashboard`                                           | Financial summaries and January-start monthly chart data                 |
-
-An actual paycheck can be recorded with just the amount received:
-
-```json
-{
-  "job_id": 1,
-  "payday": "2026-09-18",
-  "actual_amount": 1200,
-  "notes": "Example amount; replace with the actual deposit"
-}
-```
-
-No example amount is seeded into the database. A manual overnight shift uses `clock_in: "2026-09-17T21:00"`, `clock_out: "2026-09-18T05:30"`, and `break_minutes: 30`. These API field names are retained even though the UI calls them start/end dates.
-
-Savings balance reads and transaction writes share a lock, so two withdrawals at the same moment cannot overdraw savings.
-
-## Gross earnings and timezone rules
-
-Apple starts at $25/hour; Home Depot at $20.47 base and $22.72 premium. The confirmed premium window is **22:00–05:30**, configurable in Settings. Base pay resumes at 05:30.
-
-The pay engine splits actual elapsed time at minute boundaries, selects the applicable Vancouver local date/effective rate, and deducts unpaid time. An exact break start deducts from the actual rate segments it overlaps. Without a break start, unpaid minutes are allocated proportionally across rates. Gross is rounded to cents per shift before summing reports.
-
-- Apple 8 AM–1 PM without a break: **$125.00**.
-- Apple 10 AM–7 PM with a 60-minute break: **$200.00**.
-- Home Depot 9 PM–5:30 AM with an untimed 30-minute break: **$179.64**.
-- The same Home Depot shift with its 30-minute break at 1 AM: **$179.51**.
-
-Entire shifts belong to their Vancouver **start date** for weekly and monthly reports. Actual payments belong to their **payday**, which may be a different month. Weeks begin Monday. Dates/times use `America/Vancouver`, not fixed-offset subtraction. `TIMESTAMPTZ` values serialize as UTC and render in Vancouver. Invalid spring-transition wall times are rejected. Calendar dates stay strings.
-
-## Imported shifts
-
-Shifts from January 1 to September 17, 2026 were imported once from a regular schedule (the importer has since been removed). They keep `source = 'schedule'` and show a **Schedule estimate** label, so days that differed from the schedule can be corrected or deleted on the Shifts page.
-
-## Testing
+## Tests
 
 ```sh
-npm test
-createdb shiftlog_test  # once
-TEST_DATABASE_URL=postgresql://localhost/shiftlog_test npm run test:integration
+npm test                    # unit tests: pay, time, validation (no database)
+createdb shiftlog_test      # first time only
+export TEST_DATABASE_URL=postgresql://localhost/shiftlog_test
+npm run test:integration    # every API route against a real database
 npx playwright install chromium
-TEST_DATABASE_URL=postgresql://localhost/shiftlog_test npm run test:e2e
+npm run test:e2e            # Shifts, Money, and Overview in a real browser
+npm run format:check        # Prettier
 ```
 
-Tests create uniquely named schemas in the separate test database and clean up only those schemas. Coverage includes pay boundaries, overnight work, January-start reporting, optional paycheck dates, real zero versus missing pay, CRUD, and browser forms. See [verification notes](docs/VERIFICATION.md).
+Integration and browser tests create a uniquely named schema in the test database, run all migrations, and delete the schema afterwards. They never touch the real database.
 
-## Deployment and scope
+## API
 
-Install dependencies, build CSS, configure a secret database URL and host/port, run migrations as a release step, and start Node behind HTTPS. Use the PostgreSQL provider's verified TLS settings. Serve the frontend/API from the same origin.
+All routes start with `/api` and use JSON. Errors return `{ "error": "message" }`; successful deletes return 204.
 
-The co-op version intentionally excludes tax/CPP/EI calculations, overtime, employer contributions, and authentication. Actual received amounts are recorded from deposits without calculating deductions. Keep real financial data private; a public interactive demo needs disposable data or access controls.
+| Route                                                      | Purpose                                             |
+| ---------------------------------------------------------- | --------------------------------------------------- |
+| `GET /jobs`                                                | The employers                                       |
+| `GET/POST /shifts`, `PATCH/DELETE /shifts/:id`             | Shifts with calculated paid hours and gross pay     |
+| `GET/POST /transactions`, `PATCH/DELETE /transactions/:id` | Expenses, deposits, withdrawals; filterable by date |
+| `GET/POST /paychecks`, `PATCH/DELETE /paychecks/:id`       | Paychecks                                           |
+| `GET/PUT /pay-rates`                                       | Pay rates by job and effective date                 |
+| `GET/PUT /savings-goal`                                    | The savings goal                                    |
+| `GET /dashboard`                                           | Overview numbers, monthly chart data, and paychecks |
 
-Other limitations: no multiple savings goals, no CSV import/export, no job-creation UI, and no immutable payroll snapshots. Summaries calculate personal records in Node; larger datasets need pagination and cached aggregates. Browser timezone data covers 1970–2030 and should be kept current. Actual cash remaining excludes transfers into savings; those are shown separately as deposits.
+The shift fields are named `clock_in` and `clock_out` in the API, although the UI calls them start and end.
 
-## Learning and future improvements
+## Public demo
 
-The code demonstrates validation, parameterized SQL, joins, database constraints, transaction locks, timezones, modular business rules, chart datasets, and isolated integration testing. Future improvements include verified payroll rules, immutable pay snapshots, authentication/ownership, exports, and reporting performance.
+`npm run build:demo` builds a read-only copy into `dist-demo/` that uses fictional data (as of September 22, 2026) and never reads the database, `.env`, or backups. GitHub Actions publishes it to GitHub Pages on every push to `main`. Preview it locally with `node scripts/serve-demo.js` at http://127.0.0.1:3102/ShiftLog/, and test it with `npm run test:demo`.
 
-[PROJECT_WALKTHROUGH.md](docs/PROJECT_WALKTHROUGH.md) explains the implementation. [INTERVIEW_NOTES.md](docs/INTERVIEW_NOTES.md) summarizes the architecture and tradeoffs.
+## Scope
+
+Deliberately not included yet: tax and deduction estimates, calendar import, overtime, and login. Without login the app is for private use only. Do not host it with real financial data unless access is protected.
