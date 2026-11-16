@@ -173,7 +173,6 @@ test("Home Depot premium ends exactly at 5:30 AM", () => {
 import {
   trackedMonths,
   budgetForMonth,
-  payPeriods,
   BUDGET_CATEGORIES,
 } from "../lib/planning.js";
 import {
@@ -216,47 +215,6 @@ test("Budgets sum to $2150, with changes applied only from their effective month
   assert.equal(
     budgetForMonth(rates, "2026-09").reduce((n, r) => n + r.amount, 0),
     2250,
-  );
-});
-test("Payday schedule uses September 18 anchor without inventing coverage", () => {
-  const periods = payPeriods(
-    [],
-    jobs,
-    { anchor_payday: "2026-09-18", interval_days: 14 },
-    [],
-    "2026-09-19",
-  );
-  assert.equal(periods[0].payday, "2026-01-09");
-  assert.ok(periods.some((p) => p.payday === "2026-10-02"));
-  assert.ok(
-    periods.every((p) => p.gross_estimate === null && p.period_start === null),
-  );
-  const dates = [...new Set(periods.map((p) => p.payday))];
-  for (let i = 1; i < dates.length; i++)
-    assert.equal((new Date(dates[i]) - new Date(dates[i - 1])) / 86400000, 14);
-});
-test("Only configured work periods assign shifts to estimated checks", () => {
-  const rows = payPeriods(
-    [
-      {
-        job_id: 1,
-        clock_in: instant("2026-09-01T08:00"),
-        clock_out: instant("2026-09-01T13:00"),
-        gross: 125,
-      },
-    ],
-    jobs,
-    { anchor_payday: "2026-09-18", interval_days: 14 },
-    [{ job_id: 1, anchor_period_end: "2026-09-12" }],
-    "2026-09-19",
-  );
-  const apple = rows.find((p) => p.job_id === 1 && p.payday === "2026-09-18");
-  assert.equal(apple.period_start, "2026-08-30");
-  assert.equal(apple.gross_estimate, 125);
-  assert.equal(
-    rows.find((p) => p.job_id === 2 && p.payday === "2026-09-18")
-      .gross_estimate,
-    null,
   );
 });
 test("Manual paycheck accepts zero and unknown period but rejects partial dates", () => {

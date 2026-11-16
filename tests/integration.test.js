@@ -282,40 +282,6 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
         );
       },
     );
-    await t.test(
-      "Payday anchor is separate from coverage; estimates require explicit configuration",
-      async () => {
-        const result = await send("/api/pay-periods");
-        assert.equal(result.schedule.anchor_payday, "2026-09-18");
-        assert.ok(result.periods.some((p) => p.payday === "2026-01-09"));
-        assert.ok(
-          result.periods.every(
-            (p) => p.period_start === null && p.gross_estimate === null,
-          ),
-        );
-        await send("/api/payroll-coverage", "PUT", {
-          job_id: apple,
-          anchor_period_end: "2026-09-12",
-        });
-        const configured = await send("/api/pay-periods");
-        assert.equal(
-          configured.periods.find(
-            (p) => p.job_id === apple && p.payday === "2026-09-18",
-          ).period_start,
-          "2026-08-30",
-        );
-        assert.equal(
-          configured.periods.find(
-            (p) => p.job_id === depot && p.payday === "2026-09-18",
-          ).gross_estimate,
-          null,
-        );
-        await send("/api/payroll-coverage", "PUT", {
-          job_id: apple,
-          anchor_period_end: "",
-        });
-      },
-    );
     await t.test("a logged shift requires an end time", async () => {
       await send(
         "/api/shifts",

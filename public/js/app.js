@@ -131,22 +131,6 @@ function bindForms() {
     toast("Savings goal updated.");
     await render();
   });
-  handleSubmit("coverage-form", async (data) => {
-    await api("/payroll-coverage", { method: "PUT", body: data });
-    toast("Payroll coverage updated.");
-    await render();
-  });
-  const coverageForm = document.querySelector("#coverage-form");
-  if (coverageForm) {
-    const update = () => {
-      coverageForm.elements.anchor_period_end.value =
-        state.payroll_coverage.find(
-          (c) => c.job_id === Number(coverageForm.elements.job_id.value),
-        )?.anchor_period_end || "";
-    };
-    coverageForm.elements.job_id.addEventListener("change", update);
-    update();
-  }
   document
     .querySelector("#spending-comparison")
     ?.addEventListener("change", (event) => {

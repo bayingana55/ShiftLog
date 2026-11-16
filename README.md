@@ -44,7 +44,6 @@ Install Chromium first with `npx playwright install chromium`, or set
 - **Log shift** with explicit start/end dates and times, unpaid breaks, editing, confirmed deletion, and filters. Overnight shifts use the next calendar date for the end.
 - Centralized date-effective base/premium pay rules and precise or proportional unpaid-break allocation.
 - Actual paycheck CRUD by employer and payday, with optional gross amount, work dates, and notes.
-- A shared biweekly payday schedule anchored to **September 18, 2026**, without inferred payroll cutoffs.
 - Recurring monthly budgets with custom categories, independent expenses, savings deposits, and withdrawals.
 - January-2026-to-current-month analytics with planned/actual expense selection and separate cumulative savings series.
 - A configurable savings goal, initially **$28,000**.
@@ -105,10 +104,6 @@ Settings can save a new budget effective from a selected month. Earlier months k
 
 ## Paydays and paychecks
 
-Both employers use the same confirmed payday sequence: September 18, 2026 plus or minus multiples of 14 calendar days. This includes January 9, January 23, September 4, September 18, October 2, and October 16. Dates are calendar calculations and do not imply actual receipt, holiday adjustments, or covered work dates.
-
-Work-period coverage is initially **unconfigured for both jobs**. No shifts are assigned to a paycheck from the payday anchor alone. Settings can later record the last work date covered by the anchor paycheck, separately for each employer. Only then does the app construct consecutive, inclusive 14-day work periods. Shifts are attributed by Vancouver start date. Periods extending before January 2026 are labeled partial history.
-
 An actual paycheck record can be added without either work date or a gross amount. If dates are supplied, both are required and must form a valid interval ending on or before payday. Known work dates also enable a shift-based gross estimate for that record. This does not configure all other paychecks automatically.
 
 One paycheck record is allowed per employer/payday, so Apple and Home Depot can both have records on September 18. Off-schedule payment dates are supported in the actual-paycheck list. A recorded gross amount is separate from the amount received. The displayed gross-minus-actual difference is **not classified as tax or deductions**.
@@ -127,7 +122,7 @@ server.js → routes/api.js → validation / pay / planning / summary modules
 PostgreSQL
 ```
 
-`lib/pay.js` owns gross earnings calculations. `lib/planning.js` owns the history bounds, month sequence, recurring budgets, and optional payroll coverage. `lib/data.js` builds the dashboard and chart data. `public/js/planning-views.js` renders budget, cash-flow, and paycheck tables. The frontend displays server-calculated figures.
+`lib/pay.js` owns gross earnings calculations. `lib/planning.js` owns the history bounds, month sequence, and recurring budgets. `lib/data.js` builds the dashboard and chart data. `public/js/planning-views.js` renders budget, cash-flow, and paycheck tables. The frontend displays server-calculated figures.
 
 ## Database design
 
@@ -139,8 +134,8 @@ PostgreSQL
 | `transactions`      | Actual expenses, savings deposits, or withdrawals, with a local calendar date             |
 | `savings_goals`     | Singleton savings target                                                                  |
 | `budget_rates`      | Recurring category amounts keyed by category/effective month                              |
-| `payroll_schedule`  | Shared payday anchor and 14-day interval                                                  |
-| `payroll_coverage`  | Optional anchor work-period end per employer                                              |
+| `payroll_schedule`  | No longer used by the app; to be dropped                                                  |
+| `payroll_coverage`  | No longer used by the app; to be dropped                                                  |
 | `paychecks`         | Actual amount, optional gross/period dates, notes, creation/update timestamps; FK to jobs |
 | `schema_migrations` | Applied migration versions                                                                |
 
@@ -199,8 +194,6 @@ All routes below use `/api`. Writes accept JSON. Successful deletes return 204; 
 | `POST /shifts`, `PATCH /shifts/:id`, `DELETE /shifts/:id`  | Manual work-log CRUD; creation requires an end timestamp                                   |
 | `GET/POST /transactions`, `PATCH/DELETE /transactions/:id` | Expense/deposit/withdrawal CRUD; reads accept type/category/date filters                   |
 | `GET/POST /paychecks`, `PATCH/DELETE /paychecks/:id`       | Actual-paycheck CRUD; work dates/gross remain optional                                     |
-| `GET /pay-periods`                                         | Confirmed payday sequence and optional coverage/estimates                                  |
-| `PUT /payroll-coverage`                                    | Set or clear `{ job_id, anchor_period_end }`                                               |
 | `GET/PUT /budget`                                          | Date-effective budget rows; writes use `{ effective_from, items: [{ category, amount }] }` |
 | `GET/PUT /savings-goal`                                    | Read/set `{ amount }`                                                                      |
 | `GET/PUT /pay-rates`                                       | Read/upsert rules by employer/effective date                                               |
@@ -232,7 +225,7 @@ The pay engine splits actual elapsed time at minute boundaries, selects the appl
 - Home Depot 9 PM–5:30 AM with an untimed 30-minute break: **$179.64**.
 - The same Home Depot shift with its 30-minute break at 1 AM: **$179.51**.
 
-Entire shifts belong to their Vancouver **start date** for weekly/monthly and configured work-period reports. Actual payments belong to their **payday**, which may be a different month. Weeks begin Monday. Dates/times use `America/Vancouver`, not fixed-offset subtraction. `TIMESTAMPTZ` values serialize as UTC and render in Vancouver. Invalid spring-transition wall times are rejected. Calendar dates stay strings.
+Entire shifts belong to their Vancouver **start date** for weekly and monthly reports. Actual payments belong to their **payday**, which may be a different month. Weeks begin Monday. Dates/times use `America/Vancouver`, not fixed-offset subtraction. `TIMESTAMPTZ` values serialize as UTC and render in Vancouver. Invalid spring-transition wall times are rejected. Calendar dates stay strings.
 
 ## Imported shifts
 
@@ -248,7 +241,7 @@ npx playwright install chromium
 TEST_DATABASE_URL=postgresql://localhost/shiftlog_test npm run test:e2e
 ```
 
-Tests create uniquely named schemas in the separate test database and clean up only those schemas. Coverage includes pay boundaries, overnight work, January-start reporting, budget revisions, projected/actual separation, payday anchoring, optional paycheck dates, real zero versus missing pay, CRUD, and browser forms. See [verification notes](docs/VERIFICATION.md).
+Tests create uniquely named schemas in the separate test database and clean up only those schemas. Coverage includes pay boundaries, overnight work, January-start reporting, budget revisions, projected/actual separation, optional paycheck dates, real zero versus missing pay, CRUD, and browser forms. See [verification notes](docs/VERIFICATION.md).
 
 ## Deployment and scope
 
@@ -256,7 +249,7 @@ Install dependencies, build CSS, configure a secret database URL and host/port, 
 
 The co-op version intentionally excludes tax/CPP/EI calculations, overtime, employer contributions, and authentication. Actual received amounts are recorded from deposits without calculating deductions. Keep real financial data private; a public interactive demo needs disposable data or access controls.
 
-Other limitations: no multi-goal budgeting, no CSV import/export, no job-creation UI, no immutable payroll snapshots, and no automatic cutoff/holiday-payday inference. Budget plans apply to whole months. Summaries calculate personal records in Node; larger datasets need pagination and cached aggregates. Browser timezone data covers 1970–2030 and should be kept current. Actual cash remaining excludes transfers into savings; those are shown separately as deposits.
+Other limitations: no multi-goal budgeting, no CSV import/export, no job-creation UI, and no immutable payroll snapshots. Budget plans apply to whole months. Summaries calculate personal records in Node; larger datasets need pagination and cached aggregates. Browser timezone data covers 1970–2030 and should be kept current. Actual cash remaining excludes transfers into savings; those are shown separately as deposits.
 
 ## Learning and future improvements
 

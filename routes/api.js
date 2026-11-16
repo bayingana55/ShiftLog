@@ -367,37 +367,6 @@ export function api(db) {
     });
     res.json({ effective_from: effective, items: values });
   });
-  router.get("/pay-periods", async (req, res) => {
-    const summary = await getSummary(db);
-    res.json({
-      schedule: summary.payroll_schedule,
-      coverage: summary.payroll_coverage,
-      periods: summary.pay_periods,
-    });
-  });
-  router.put("/payroll-coverage", async (req, res) => {
-    const job = id(req.body.job_id);
-    const end = req.body.anchor_period_end
-      ? date(req.body.anchor_period_end)
-      : null;
-    check(
-      !end || (end >= "2026-01-01" && end <= "2026-09-18"),
-      "Enter the last work date covered by the September 18, 2026 paycheck.",
-    );
-    check(
-      (await db.query("SELECT id FROM jobs WHERE id=$1", [job])).rowCount,
-      "Job not found.",
-      404,
-    );
-    res.json(
-      (
-        await db.query(
-          "INSERT INTO payroll_coverage(job_id,anchor_period_end) VALUES($1,$2) ON CONFLICT(job_id) DO UPDATE SET anchor_period_end=$2 RETURNING job_id,anchor_period_end::text",
-          [job, end],
-        )
-      ).rows[0],
-    );
-  });
   router.get("/pay-rates", async (req, res) =>
     res.json(
       (
