@@ -26,65 +26,6 @@ export function balanceEditor(state, refresh) {
     },
   );
 }
-export function budgetEditor(state, refresh) {
-  openModal(
-    "Edit planned expenses",
-    `<form><label>Effective month<input name="effective_month" type="month" min="2026-01" value="${state.period.month.slice(0, 7)}" required></label><p class="form-note my-4">Add, rename, change, or remove categories. This budget repeats from the selected month until a later budget revision. Earlier months stay unchanged. Set an amount to zero to stop budgeting for that category.</p><div id="budget-editor-rows"></div><button type="button" class="btn mt-4" id="add-budget-row">+ Add category</button><p id="budget-editor-total" class="mt-4" aria-live="polite"></p>${actions("Save budget")}</form>`,
-    async (data) => {
-      const items = [...document.querySelectorAll(".budget-edit-row")].map(
-        (row) => ({
-          category: row.querySelector("[name=category]").value,
-          amount: row.querySelector("[name=budget_amount]").value,
-        }),
-      );
-      await api("/budget", {
-        method: "PUT",
-        body: { effective_from: `${data.effective_month}-01`, items },
-      });
-      toast("Planned expenses updated.");
-      await refresh();
-    },
-  );
-  const rows = document.querySelector("#budget-editor-rows");
-  function total() {
-    document.querySelector("#budget-editor-total").textContent =
-      `Monthly total: ${money([...rows.querySelectorAll("[name=budget_amount]")].reduce((n, input) => n + Number(input.value || 0), 0))}`;
-  }
-  function add(item = { category: "", amount: "" }) {
-    const row = document.createElement("div");
-    row.className = "budget-edit-row";
-    row.innerHTML = `<label>Category<input name="category" maxlength="60" value="${escape(item.category)}" required></label><label>Monthly amount (CAD)<input name="budget_amount" type="number" min="0" max="999999999" step="0.01" value="${escape(item.amount)}" required></label><button type="button" class="btn btn-danger btn-sm" aria-label="Remove category">Remove</button>`;
-    row.querySelector("button").onclick = () => {
-      row.remove();
-      total();
-    };
-    row.addEventListener("input", total);
-    rows.append(row);
-    total();
-    return row;
-  }
-  function loadMonth() {
-    rows.replaceChildren();
-    const month = document.querySelector("[name=effective_month]").value;
-    const categories = [...new Set(state.budget_rates.map((r) => r.category))];
-    for (const category of categories) {
-      const rule = state.budget_rates
-        .filter(
-          (r) =>
-            r.category === category && r.effective_from.slice(0, 7) <= month,
-        )
-        .sort((a, b) => b.effective_from.localeCompare(a.effective_from))[0];
-      if (rule && Number(rule.amount) > 0) add(rule);
-    }
-    total();
-  }
-  document
-    .querySelector("[name=effective_month]")
-    .addEventListener("change", loadMonth);
-  document.querySelector("#add-budget-row").onclick = () =>
-    add().querySelector("input").focus();
-  loadMonth();
-}
 export function recordsEditor(kind, state) {
   const configs = {
     expenses: {
@@ -150,10 +91,4 @@ export function recordsEditor(kind, state) {
   }
   document.querySelector("#record-search").addEventListener("input", draw);
   draw();
-}
-export function projectionEditor(state) {
-  openModal(
-    "Change projected savings",
-    `<p>Your projection is ${money(state.projected_saved)}: logged gross earnings minus planned expenses since January 2026.</p><p class="form-note my-4">To change the projection, update the work or budget it is based on. To change money actually saved, set your actual savings balance instead.</p><div class="manager-toolbar"><button class="btn btn-primary" data-action="edit-budget">Edit planned expenses</button><button class="btn" data-action="manage-shifts">Edit logged work</button><button class="btn" data-action="set-savings">Set actual savings</button></div>`,
-  );
 }

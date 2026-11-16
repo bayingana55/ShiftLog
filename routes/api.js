@@ -292,63 +292,6 @@ export function api(db) {
     ),
   );
   router.get("/dashboard", async (req, res) => res.json(await getSummary(db)));
-  router.get("/budget", async (req, res) =>
-    res.json(
-      (
-        await db.query(
-          "SELECT category,amount,effective_from::text FROM budget_rates ORDER BY effective_from DESC,category",
-        )
-      ).rows,
-    ),
-  );
-  router.put("/budget", async (req, res) => {
-    const effective = date(req.body.effective_from);
-    check(
-      effective >= HISTORY_START && effective.endsWith("-01"),
-      "Budget changes must start on the first day of a month from January 2026.",
-    );
-    const items = req.body.items;
-    check(
-      Array.isArray(items) && items.length <= 50,
-      "Provide up to 50 budget categories.",
-    );
-    const values = items.map((item) => {
-      check(
-        item &&
-          typeof item.category === "string" &&
-          item.category.trim().length >= 1 &&
-          item.category.trim().length <= 60,
-        "Category names must be 1–60 characters.",
-      );
-      return {
-        category: item.category.trim(),
-        amount: nonnegativeAmount(item.amount),
-      };
-    });
-    check(
-      new Set(values.map((item) => item.category.toLowerCase())).size ===
-        values.length,
-      "Each budget category must have a unique name.",
-    );
-    await write(db, async (c) => {
-      // Zero rows end removed categories from this month without erasing past budgets.
-      const previous = (
-        await c.query(
-          "SELECT DISTINCT category FROM budget_rates WHERE effective_from <= $1",
-          [effective],
-        )
-      ).rows;
-      const removed = previous
-        .filter((old) => !values.some((item) => item.category === old.category))
-        .map((old) => ({ ...old, amount: 0 }));
-      for (const item of [...removed, ...values])
-        await c.query(
-          "INSERT INTO budget_rates(category,effective_from,amount) VALUES($1,$2,$3) ON CONFLICT(category,effective_from) DO UPDATE SET amount=EXCLUDED.amount",
-          [item.category, effective, item.amount],
-        );
-    });
-    res.json({ effective_from: effective, items: values });
-  });
   router.get("/pay-rates", async (req, res) =>
     res.json(
       (

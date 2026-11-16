@@ -170,11 +170,7 @@ test("Home Depot premium ends exactly at 5:30 AM", () => {
   );
 });
 
-import {
-  trackedMonths,
-  budgetForMonth,
-  BUDGET_CATEGORIES,
-} from "../lib/planning.js";
+import { trackedMonths } from "../lib/planning.js";
 import {
   paycheckInput,
   nonnegativeAmount,
@@ -200,22 +196,6 @@ test("Reports start in January 2026 and expand beyond twelve months", () => {
     "2026-03",
   ]);
   assert.equal(trackedMonths("2027-02-01").length, 14);
-});
-test("Budgets sum to $2150, with changes applied only from their effective month", () => {
-  const rates = BUDGET_CATEGORIES.map((category, i) => ({
-    category,
-    effective_from: "2026-01-01",
-    amount: [1500, 300, 150, 200][i],
-  }));
-  rates.push({ category: "Rent", effective_from: "2026-09-01", amount: 1600 });
-  assert.equal(
-    budgetForMonth(rates, "2026-08").reduce((n, r) => n + r.amount, 0),
-    2150,
-  );
-  assert.equal(
-    budgetForMonth(rates, "2026-09").reduce((n, r) => n + r.amount, 0),
-    2250,
-  );
 });
 test("Paycheck accepts zero received and an optional gross amount", () => {
   const p = paycheckInput({

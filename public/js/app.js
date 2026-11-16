@@ -1,10 +1,4 @@
-import {
-  budgetEditor,
-  goalEditor,
-  balanceEditor,
-  recordsEditor,
-  projectionEditor,
-} from "./editors.js";
+import { goalEditor, balanceEditor, recordsEditor } from "./editors.js";
 import { api, icon, escape, toast, zone } from "./ui.js";
 import * as views from "./views.js";
 import { renderCharts, destroyCharts } from "./charts.js";
@@ -131,16 +125,6 @@ function bindForms() {
     toast("Savings goal updated.");
     await render();
   });
-  document
-    .querySelector("#spending-comparison")
-    ?.addEventListener("change", (event) => {
-      document.querySelector("#comparison-label").textContent =
-        event.target.value === "planned"
-          ? "Planned expenses"
-          : "Actual expenses";
-      destroyCharts();
-      renderCharts(state, event.target.value);
-    });
   handleSubmit("rate-form", async (data) => {
     for (const field of ["premium_start", "premium_end"]) {
       const [h, m] = data[field].split(":").map(Number);
@@ -162,10 +146,8 @@ document.addEventListener("click", async (event) => {
     key = Number(target.dataset.id);
   try {
     if (action === "retry") return render();
-    if (action === "edit-budget") return budgetEditor(state, render);
     if (action === "edit-goal") return goalEditor(state, render);
     if (action === "set-savings") return balanceEditor(state, render);
-    if (action === "edit-projection") return projectionEditor(state);
     if (action === "withdraw-savings")
       return transactionForm(null, render, "withdrawal");
     if (action.startsWith("manage-"))

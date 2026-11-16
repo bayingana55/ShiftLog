@@ -41,9 +41,7 @@ test("Fictional demo loads every page under a repository path without backend re
   expect(failures).toEqual([]);
 });
 
-test("Filters and chart comparisons work while saving is blocked", async ({
-  page,
-}) => {
+test("Filters and charts work while saving is blocked", async ({ page }) => {
   await page.goto("./#shifts");
   await page.locator('[name="job_id"]').selectOption("1");
   await page.locator('[name="from"]').fill("2026-09-01");
@@ -56,8 +54,7 @@ test("Filters and chart comparisons work while saving is blocked", async ({
   await page.getByRole("button", { name: "This week", exact: true }).click();
   await expect(page.locator("#filtered-results tbody tr")).toHaveCount(1);
   await page.locator('#navigation a[href="#analytics"]').click();
-  await page.locator("#spending-comparison").selectOption("actual");
-  await expect(page.locator("#comparison-label")).toHaveText("Actual expenses");
+  await expect(page.locator("#income-chart")).toBeVisible();
   expect(
     await page.evaluate(() => Object.keys(window.Chart.instances).length),
   ).toBeGreaterThan(0);

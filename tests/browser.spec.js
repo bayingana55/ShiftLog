@@ -178,7 +178,7 @@ test("Desktop and mobile: navigation, forms, work log, savings, imports, errors"
   expect(errors).toEqual([]);
 });
 
-test("Actual paycheck entry, missing versus zero, budgets and chart labels", async ({
+test("Actual paycheck entry, missing versus zero, and chart labels", async ({
   page,
 }) => {
   const navigate = async (label) => {
@@ -236,13 +236,11 @@ test("Actual paycheck entry, missing versus zero, budgets and chart labels", asy
   await expect(
     page.locator(".stat-card").filter({ hasText: "Actual cash remaining" }),
   ).toContainText("$2,050.00");
-  await page.getByLabel("Spending comparison").selectOption("actual");
-  await expect(page.locator("#comparison-label")).toHaveText("Actual expenses");
   const chart = await page.evaluate(
     () => window.Chart.getChart("income-chart").data,
   );
   expect(chart.labels[0]).toBe("Jan 2026");
-  expect(chart.datasets[1].label).toBe("Actual expenses");
+  expect(chart.datasets[1].label).toBe("Expenses");
   await navigate("Earnings");
   const depot = checks.getByRole("row").filter({ hasText: "Home Depot" });
   await depot.getByRole("button", { name: "Delete", exact: true }).click();
@@ -270,25 +268,6 @@ test("Actual paycheck entry, missing versus zero, budgets and chart labels", asy
     .click();
   await navigate("Overview");
   await expect(actual).toContainText("Not recorded");
-  await navigate("Settings");
-  await page
-    .getByRole("button", { name: "Edit planned expenses", exact: true })
-    .click();
-  const rent = page
-    .locator(".budget-edit-row")
-    .filter({ has: page.locator('input[name="category"][value="Rent"]') });
-  await rent.getByLabel("Monthly amount (CAD)").fill("1600");
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Save budget" })
-    .click();
-  await expect(page.getByRole("dialog")).not.toBeVisible();
-  await navigate("Overview");
-  await expect(
-    page
-      .locator(".stat-card")
-      .filter({ hasText: "Planned expenses this month" }),
-  ).toContainText("$2,250.00");
   await navigate("Analytics");
   await expect(
     page.getByRole("cell", { name: "Jan 2026", exact: true }).first(),
@@ -307,9 +286,6 @@ test("Overview provides direct editing, savings reduction, withdrawals, and expe
   const expenses = page
     .locator(".stat-card")
     .filter({ hasText: "Actual expenses this month" });
-  const planned = page
-    .locator(".stat-card")
-    .filter({ hasText: "Planned expenses this month" });
   const dialog = page.getByRole("dialog");
   async function setBalance(value) {
     await savings
@@ -365,26 +341,6 @@ test("Overview provides direct editing, savings reduction, withdrawals, and expe
   await row.getByRole("button", { name: "Delete", exact: true }).click();
   await dialog.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(expenses).toContainText("$0.00");
-  await planned
-    .getByRole("button", { name: "Edit budget", exact: true })
-    .click();
-  await dialog
-    .getByRole("button", { name: "+ Add category", exact: true })
-    .click();
-  const newRow = dialog.locator(".budget-edit-row").last();
-  await newRow.getByLabel("Category", { exact: true }).fill("Travel");
-  await newRow.getByLabel("Monthly amount (CAD)").fill("100");
-  await dialog.getByRole("button", { name: "Save budget" }).click();
-  await expect(planned).toContainText("$2,350.00");
-  await planned
-    .getByRole("button", { name: "Edit budget", exact: true })
-    .click();
-  const travel = dialog
-    .locator(".budget-edit-row")
-    .filter({ has: page.locator('input[value="Travel"]') });
-  await travel.getByRole("button", { name: "Remove category" }).click();
-  await dialog.getByRole("button", { name: "Save budget" }).click();
-  await expect(planned).toContainText("$2,250.00");
   const goal = page
     .locator(".stat-card")
     .filter({ hasText: "Remaining actual goal" });
@@ -395,25 +351,9 @@ test("Overview provides direct editing, savings reduction, withdrawals, and expe
   await page.setViewportSize({ width: 390, height: 844 });
   await setBalance("0");
   await expect(savings).toContainText("$0.00");
-  await planned
-    .getByRole("button", { name: "Edit budget", exact: true })
-    .click();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBeTruthy();
-  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Change projection", exact: true })
-    .click();
-  await expect(dialog).toContainText(
-    "logged gross earnings minus planned expenses",
-  );
-  await dialog
-    .getByRole("button", { name: "Edit planned expenses", exact: true })
-    .click();
-  await expect(
-    dialog.getByRole("heading", { name: "Edit planned expenses" }),
-  ).toBeVisible();
 });

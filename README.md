@@ -1,6 +1,6 @@
 # ShiftLog
 
-A personal work log and financial planning dashboard for multiple jobs. Record completed shifts, calculate gross earnings, track actual paychecks and spending, and compare projected savings with money explicitly saved.
+A personal work log and financial planning dashboard for multiple jobs. Record completed shifts, calculate gross earnings, track actual paychecks and spending, and follow savings toward a goal.
 
 Built with Express, PostgreSQL, and vanilla JavaScript for a BCIT CST portfolio. Tracked work and financial history starts **January 1, 2026**.
 
@@ -9,7 +9,7 @@ Built with Express, PostgreSQL, and vanilla JavaScript for a BCIT CST portfolio.
 The repository includes a read-only GitHub Pages build with fictional records,
 separate from the PostgreSQL application. It displays a fixed September 22, 2026
 snapshot so the sample charts and quick date filters stay consistent over time.
-Navigation, filters, and chart comparisons work; saving is disabled.
+Navigation, filters, and charts work; saving is disabled.
 The build uses the application's pay and summary calculations and never reads the
 personal database, `.env`, or backups.
 
@@ -40,12 +40,12 @@ Install Chromium first with `npx playwright install chromium`, or set
 
 ## Features
 
-- Responsive dashboard with weekly hours, gross earnings, planned/actual expenses, actual pay received, cash remaining, and savings progress.
+- Responsive dashboard with weekly hours, gross earnings, recorded expenses, actual pay received, cash remaining, and savings progress.
 - **Log shift** with explicit start/end dates and times, unpaid breaks, editing, confirmed deletion, and filters. Overnight shifts use the next calendar date for the end.
 - Centralized date-effective base/premium pay rules and precise or proportional unpaid-break allocation.
 - Actual paycheck CRUD by employer and payday, with optional gross amount and notes.
-- Recurring monthly budgets with custom categories, independent expenses, savings deposits, and withdrawals.
-- January-2026-to-current-month analytics with planned/actual expense selection and separate cumulative savings series.
+- Expenses, savings deposits, and withdrawals.
+- January-2026-to-current-month charts of earnings, expenses, and the savings balance.
 - A configurable savings goal, initially **$28,000**.
 - Automated unit, PostgreSQL integration, and desktop/mobile browser tests.
 
@@ -63,43 +63,25 @@ The application is a completed-work log: you enter each shift after it ends. The
 | --------------------- | ------------------------------------------------------------------- |
 | Gross earnings        | Completed logged shifts × applicable pay rates, minus unpaid breaks |
 | Actual pay received   | Amounts manually recorded against each employer/payday              |
-| Planned expenses      | Recurring monthly budget, effective from a selected month           |
 | Actual expenses       | Recorded expense transactions                                       |
-| Projected savings     | Gross earned − planned expenses                                     |
 | Actual cash remaining | Recorded pay received − actual expenses; not automatically savings  |
 | Actual savings        | Recorded savings deposits minus withdrawals                         |
 
 Actual pay and cash remaining are **Not recorded** when a month contains no paycheck records. An explicitly recorded zero paycheck is $0, not missing data. When only some paychecks are entered, the recorded total may be incomplete; the UI shows the record count and labels that limitation. Missing paychecks never erase gross earnings.
 
-Projected savings are a before-deductions planning figure, **not a bank balance**. Each tracked month uses its full planned budget, including the current partial month. No future work income is extrapolated. Negative monthly projections reduce cumulative projections. Actual savings progress and remaining goal use deposits minus withdrawals, separately from projected progress.
+Actual savings progress and remaining goal use deposits minus withdrawals.
 
 ## Editing from Overview
 
 Every summary card has visible actions for its underlying records:
 
-- **Planned expenses → Edit budget:** choose an effective month, add/rename categories, change amounts, or remove categories. Save an empty list to clear the plan from that month. Switching months loads the budget applicable to that month.
 - **Actual expenses → Add expense / Edit / remove:** manage recorded purchases without leaving Overview. Search the record list to find older entries.
 - **Actual savings balance → Set balance:** enter a higher or lower amount, including zero. The app records the difference as a dated deposit or withdrawal; it never silently overwrites history.
-- **Actual savings balance → Add / Withdraw / History:** record transfers or edit/delete existing records. Withdrawals do not count as purchases or change gross-based projections.
+- **Actual savings balance → Add / Withdraw / History:** record transfers or edit/delete existing records. Withdrawals do not count as purchases.
 - **Remaining actual goal → Edit goal:** change the target directly.
 - **Pay and hours cards:** add/edit/delete paychecks or shifts through searchable record managers.
-- **Projected savings → Change projection:** update the underlying budget/work entries, or switch to setting actual savings. A computed projection is not an editable bank balance.
 
 Deletes require confirmation. Savings changes that would leave the current balance negative are rejected; correct the associated withdrawal before deleting a deposit it depends on. Record an expense separately if withdrawn savings was spent. Savings transfers are separate from the “actual cash remaining” calculation, which remains actual pay minus actual expenses.
-
-## Monthly budget
-
-The initial recurring plan applies from January 2026:
-
-| Category            | Monthly amount |
-| ------------------- | -------------: |
-| Rent                |         $1,500 |
-| Groceries           |           $300 |
-| Bills               |           $150 |
-| Clothes & Going Out |           $200 |
-| **Total**           |     **$2,150** |
-
-Settings can save a new budget effective from a selected month. Earlier months keep their previous rates. Updating an existing effective month revises that plan. Budget entries do not create individual purchases, paychecks, or savings deposits. Categories can be added, renamed, or removed. Removed categories get a zero rate from the selected month so earlier budgets remain intact; a later explicit revision can reintroduce them. Budget categories are separate from transaction categories; reports compare their totals rather than inventing category mappings.
 
 ## Paydays and paychecks
 
@@ -119,7 +101,7 @@ server.js → routes/api.js → validation / pay / planning / summary modules
 PostgreSQL
 ```
 
-`lib/pay.js` owns gross earnings calculations. `lib/planning.js` owns the history bounds, month sequence, and recurring budgets. `lib/data.js` builds the dashboard and chart data. `public/js/planning-views.js` renders budget, cash-flow, and paycheck tables. The frontend displays server-calculated figures.
+`lib/pay.js` owns gross earnings calculations. `lib/planning.js` owns the history start date and month sequence. `lib/data.js` builds the dashboard and chart data. `public/js/planning-views.js` renders cash-flow, and paycheck tables. The frontend displays server-calculated figures.
 
 ## Database design
 
@@ -130,7 +112,7 @@ PostgreSQL
 | `pay_rates`         | Date-effective base/premium rules; authoritative for earnings                       |
 | `transactions`      | Actual expenses, savings deposits, or withdrawals, with a local calendar date       |
 | `savings_goals`     | Singleton savings target                                                            |
-| `budget_rates`      | Recurring category amounts keyed by category/effective month                        |
+| `budget_rates`      | No longer used by the app; to be dropped                                            |
 | `payroll_schedule`  | No longer used by the app; to be dropped                                            |
 | `payroll_coverage`  | No longer used by the app; to be dropped                                            |
 | `paychecks`         | Actual amount, optional gross, notes, creation/update timestamps; FK to jobs        |
@@ -184,17 +166,16 @@ Standard pg variables such as `PGHOST`, `PGUSER`, and `PGPASSWORD` also work. `.
 
 All routes below use `/api`. Writes accept JSON. Successful deletes return 204; errors return `{ "error": "Useful message" }`. SQL values are parameterized and validation runs on the server.
 
-| Routes                                                     | Purpose                                                                                    |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `GET /jobs`                                                | Employer list                                                                              |
-| `GET /shifts?job_id=&from=&to=`                            | Joined work entries with paid hours, gross, and break method                               |
-| `POST /shifts`, `PATCH /shifts/:id`, `DELETE /shifts/:id`  | Manual work-log CRUD; creation requires an end timestamp                                   |
-| `GET/POST /transactions`, `PATCH/DELETE /transactions/:id` | Expense/deposit/withdrawal CRUD; reads accept type/category/date filters                   |
-| `GET/POST /paychecks`, `PATCH/DELETE /paychecks/:id`       | Actual-paycheck CRUD; gross amount is optional                                             |
-| `GET/PUT /budget`                                          | Date-effective budget rows; writes use `{ effective_from, items: [{ category, amount }] }` |
-| `GET/PUT /savings-goal`                                    | Read/set `{ amount }`                                                                      |
-| `GET/PUT /pay-rates`                                       | Read/upsert rules by employer/effective date                                               |
-| `GET /dashboard`                                           | Financial summaries and January-start monthly chart data                                   |
+| Routes                                                     | Purpose                                                                  |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `GET /jobs`                                                | Employer list                                                            |
+| `GET /shifts?job_id=&from=&to=`                            | Joined work entries with paid hours, gross, and break method             |
+| `POST /shifts`, `PATCH /shifts/:id`, `DELETE /shifts/:id`  | Manual work-log CRUD; creation requires an end timestamp                 |
+| `GET/POST /transactions`, `PATCH/DELETE /transactions/:id` | Expense/deposit/withdrawal CRUD; reads accept type/category/date filters |
+| `GET/POST /paychecks`, `PATCH/DELETE /paychecks/:id`       | Actual-paycheck CRUD; gross amount is optional                           |
+| `GET/PUT /savings-goal`                                    | Read/set `{ amount }`                                                    |
+| `GET/PUT /pay-rates`                                       | Read/upsert rules by employer/effective date                             |
+| `GET /dashboard`                                           | Financial summaries and January-start monthly chart data                 |
 
 An actual paycheck can be recorded with just the amount received:
 
@@ -238,7 +219,7 @@ npx playwright install chromium
 TEST_DATABASE_URL=postgresql://localhost/shiftlog_test npm run test:e2e
 ```
 
-Tests create uniquely named schemas in the separate test database and clean up only those schemas. Coverage includes pay boundaries, overnight work, January-start reporting, budget revisions, projected/actual separation, optional paycheck dates, real zero versus missing pay, CRUD, and browser forms. See [verification notes](docs/VERIFICATION.md).
+Tests create uniquely named schemas in the separate test database and clean up only those schemas. Coverage includes pay boundaries, overnight work, January-start reporting, optional paycheck dates, real zero versus missing pay, CRUD, and browser forms. See [verification notes](docs/VERIFICATION.md).
 
 ## Deployment and scope
 
@@ -246,7 +227,7 @@ Install dependencies, build CSS, configure a secret database URL and host/port, 
 
 The co-op version intentionally excludes tax/CPP/EI calculations, overtime, employer contributions, and authentication. Actual received amounts are recorded from deposits without calculating deductions. Keep real financial data private; a public interactive demo needs disposable data or access controls.
 
-Other limitations: no multi-goal budgeting, no CSV import/export, no job-creation UI, and no immutable payroll snapshots. Budget plans apply to whole months. Summaries calculate personal records in Node; larger datasets need pagination and cached aggregates. Browser timezone data covers 1970–2030 and should be kept current. Actual cash remaining excludes transfers into savings; those are shown separately as deposits.
+Other limitations: no multiple savings goals, no CSV import/export, no job-creation UI, and no immutable payroll snapshots. Summaries calculate personal records in Node; larger datasets need pagination and cached aggregates. Browser timezone data covers 1970–2030 and should be kept current. Actual cash remaining excludes transfers into savings; those are shown separately as deposits.
 
 ## Learning and future improvements
 

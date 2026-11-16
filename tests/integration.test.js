@@ -180,50 +180,6 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
     );
 
     await t.test(
-      "Budget planning, projections, and separate actual savings",
-      async () => {
-        const summary = await send("/api/dashboard");
-        assert.equal(summary.goal, 1000); // prior goal CRUD test intentionally changes it
-        assert.equal(summary.planned_month, 2150);
-        assert.equal(
-          summary.projected_month,
-          Math.round((summary.gross_month - 2150) * 100) / 100,
-        );
-        assert.equal(
-          summary.projected_saved,
-          Math.round(
-            summary.monthly.reduce((n, m) => n + m.income - m.planned, 0) * 100,
-          ) / 100,
-        );
-        assert.equal(summary.saved, 500);
-        assert.equal(summary.actual_pay_month, null);
-        assert.equal(summary.cash_remaining_month, null);
-        const rates = await send("/api/budget");
-        assert.equal(rates.length, 4);
-        const items = summary.budget_items.map((r) => ({
-          ...r,
-          amount: r.category === "Rent" ? 1600 : r.amount,
-        }));
-        await send("/api/budget", "PUT", {
-          effective_from: summary.period.month,
-          items,
-        });
-        const updated = await send("/api/dashboard");
-        assert.equal(updated.planned_month, 2250);
-        assert.equal(updated.monthly[0].planned, 2150);
-        await send("/api/budget", "PUT", {
-          effective_from: summary.period.month,
-          items: summary.budget_items,
-        });
-        await send(
-          "/api/budget",
-          "PUT",
-          { effective_from: "2026-09-02", items },
-          400,
-        );
-      },
-    );
-    await t.test(
       "Paycheck CRUD supports two employers per payday, real zero and missing data",
       async () => {
         const a = await send(
@@ -319,7 +275,6 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
         let summary = await send("/api/dashboard");
         assert.equal(summary.saved, 600);
         assert.equal(summary.spending_month, before.spending_month);
-        assert.equal(summary.projected_saved, before.projected_saved);
         await send(`/api/transactions/${withdrawal.id}`, "PATCH", {
           amount: 50,
         });
@@ -358,45 +313,6 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
         await send("/api/savings-balance", "PUT", { amount: 0 });
         assert.equal((await send("/api/dashboard")).saved, 0);
         await send("/api/savings-balance", "PUT", { amount: -1 }, 400);
-      },
-    );
-    await t.test(
-      "Budget categories can be added, renamed, removed, and cleared without deleting earlier plans",
-      async () => {
-        const month = localDate().slice(0, 7) + "-01";
-        await send("/api/budget", "PUT", {
-          effective_from: month,
-          items: [
-            { category: "Travel", amount: 250 },
-            { category: "Rent", amount: 1000 },
-          ],
-        });
-        let summary = await send("/api/dashboard");
-        assert.equal(summary.planned_month, 1250);
-        assert.equal(summary.monthly[0].planned, 2150);
-        await send("/api/budget", "PUT", {
-          effective_from: month,
-          items: [{ category: "Trips", amount: 200 }],
-        });
-        summary = await send("/api/dashboard");
-        assert.equal(summary.planned_month, 200);
-        assert.deepEqual(summary.budget_items, [
-          { category: "Trips", amount: 200 },
-        ]);
-        await send("/api/budget", "PUT", { effective_from: month, items: [] });
-        assert.equal((await send("/api/dashboard")).planned_month, 0);
-        await send(
-          "/api/budget",
-          "PUT",
-          {
-            effective_from: month,
-            items: [
-              { category: "Rent", amount: 1 },
-              { category: "rent", amount: 2 },
-            ],
-          },
-          400,
-        );
       },
     );
     await t.test(

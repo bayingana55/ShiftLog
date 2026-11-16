@@ -34,7 +34,7 @@ function chart(id, type, data, options = {}) {
     }),
   );
 }
-export function renderCharts(summary, comparison = "planned") {
+export function renderCharts(summary) {
   const monthly = summary.monthly;
   const incomeData = {
     labels: monthly.map((m) =>
@@ -49,11 +49,8 @@ export function renderCharts(summary, comparison = "planned") {
         maxBarThickness: 15,
       },
       {
-        label:
-          comparison === "planned" ? "Planned expenses" : "Actual expenses",
-        data: monthly.map((m) =>
-          comparison === "planned" ? m.planned : m.spending,
-        ),
+        label: "Expenses",
+        data: monthly.map((m) => m.spending),
         backgroundColor: "#d5dfb7",
         borderRadius: 3,
         maxBarThickness: 15,
@@ -93,33 +90,20 @@ export function renderCharts(summary, comparison = "planned") {
       },
     ],
   });
-  chart(
-    "savings-chart",
-    "line",
-    {
-      labels: monthly.map((m) =>
-        window.moment.utc(`${m.month}-01`).format("MMM YYYY"),
-      ),
-      datasets: [
-        {
-          label: "Projected savings",
-          data: monthly.map((m) => m.projected_total),
-          borderColor: "#a6b887",
-          borderDash: [5, 4],
-          pointRadius: 2,
-          tension: 0.2,
-        },
-        {
-          label: "Actual savings balance",
-          data: monthly.map((m) => m.saved_total),
-          borderColor: "#527753",
-          backgroundColor: "#52775315",
-          fill: true,
-          tension: 0.2,
-          pointRadius: 3,
-        },
-      ],
-    },
-    { plugins: { legend: { display: true, position: "bottom" } } },
-  );
+  chart("savings-chart", "line", {
+    labels: monthly.map((m) =>
+      window.moment.utc(`${m.month}-01`).format("MMM YYYY"),
+    ),
+    datasets: [
+      {
+        label: "Savings balance",
+        data: monthly.map((m) => m.saved_total),
+        borderColor: "#527753",
+        backgroundColor: "#52775315",
+        fill: true,
+        tension: 0.2,
+        pointRadius: 3,
+      },
+    ],
+  });
 }
