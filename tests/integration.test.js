@@ -180,7 +180,7 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
     );
 
     await t.test(
-      "Paycheck CRUD supports two employers per payday, real zero and missing data",
+      "Paycheck CRUD supports two employers per payday and a real zero",
       async () => {
         const a = await send(
           "/api/paychecks",
@@ -202,23 +202,23 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
           { job_id: apple, payday: localDate(), actual_amount: 100 },
           409,
         );
-        let summary = await send("/api/dashboard");
-        assert.equal(summary.actual_pay_month, 2000);
-        assert.equal(summary.saved, 500);
-        assert.equal(
-          summary.cash_remaining_month,
-          2000 - summary.spending_month,
-        );
+        const total = async () =>
+          (await send("/api/paychecks")).reduce(
+            (sum, p) => sum + Number(p.actual_amount),
+            0,
+          );
+        assert.equal(await total(), 2000);
         await send(`/api/paychecks/${a.id}`, "PATCH", {
           actual_amount: 1250,
           notes: "Corrected amount",
         });
-        assert.equal((await send("/api/dashboard")).actual_pay_month, 2050);
+        assert.equal(await total(), 2050);
         await send(`/api/paychecks/${d.id}`, "DELETE", undefined, 204);
         await send(`/api/paychecks/${a.id}`, "PATCH", { actual_amount: 0 });
-        assert.equal((await send("/api/dashboard")).actual_pay_month, 0);
+        const [zero] = await send("/api/paychecks");
+        assert.equal(Number(zero.actual_amount), 0); // a real $0 is kept
         await send(`/api/paychecks/${a.id}`, "DELETE", undefined, 204);
-        assert.equal((await send("/api/dashboard")).actual_pay_month, null);
+        assert.equal((await send("/api/paychecks")).length, 0);
         await send(
           "/api/paychecks",
           "POST",

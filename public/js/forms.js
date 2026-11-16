@@ -11,7 +11,7 @@ import {
 const modal = document.querySelector("#modal");
 let previousFocus;
 modal.addEventListener("close", () => previousFocus?.focus());
-export function openModal(title, content, onSubmit) {
+function openModal(title, content, onSubmit) {
   modal.classList.remove("wide-dialog");
   previousFocus = document.activeElement;
   document.querySelector("#modal-content").innerHTML =

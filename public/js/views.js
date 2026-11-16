@@ -1,4 +1,3 @@
-import { paycheckTable } from "./planning-views.js";
 import {
   icon,
   escape,
@@ -32,7 +31,7 @@ export function shiftTable(shifts, compact = false) {
     );
   return `<div class="table-scroll ${compact ? "" : "shift-table-scroll"}"><table><thead><tr><th>Date</th><th>Job</th>${compact ? "" : "<th>Start → end</th><th>Break</th>"}<th>Paid hours</th><th>Gross pay</th>${compact ? "" : "<th>Actions</th>"}</tr></thead><tbody>${shifts.map((s) => `<tr><td><strong>${day(s.clock_in)}</strong>${!compact && s.source === "schedule" ? "<small>Schedule estimate</small>" : ""}</td><td>${badge(s)}</td>${compact ? "" : `<td>${time(s.clock_in)} → ${time(s.clock_out)}${s.clock_out && day(s.clock_in) !== day(s.clock_out) ? `<small>Ends ${day(s.clock_out)}</small>` : ""}</td><td>${s.break_minutes} min${s.break_method === "proportional" ? "<small>Proportional</small>" : ""}</td>`}<td>${s.clock_out ? `${hours(s.paid_hours)} hrs` : '<span class="badge active-badge">Needs end time</span>'}</td><td><strong>${s.clock_out ? money(s.gross) : "—"}</strong></td>${compact ? "" : `<td><div class="row-actions"><button class="btn btn-sm" data-action="edit-shift" data-id="${s.id}">Edit</button><button class="btn btn-sm btn-danger" data-action="delete-shift" data-id="${s.id}" aria-label="Delete shift on ${day(s.clock_in)}">Delete</button></div></td>`}</tr>`).join("")}</tbody></table></div>`;
 }
-export function incomeCard(id = "income-chart", title = "Earned vs. spent") {
+function incomeCard(id = "income-chart", title = "Earned vs. spent") {
   return `<section class="card card-pad"><div class="card-head"><div><h2>${title}</h2><p>Gross earned and recorded expenses · Since Jan 2026</p></div></div><div class="legend mb-3"><span><i></i>Gross earnings</span><span><i class="spend"></i>Expenses</span></div><div class="chart-wrap"><canvas id="${id}" role="img" aria-label="Gross earnings compared with recorded expenses by month since January 2026"></canvas></div></section>`;
 }
 
@@ -71,6 +70,16 @@ export function shiftsPage(s, jobs) {
 export function transactionsTable(rows) {
   if (!rows.length) return empty("No transactions match this view.");
   return `<div class="table-scroll"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th><th>Actions</th></tr></thead><tbody>${rows.map((t) => `<tr><td>${dateOnly(t.date)}</td><td><strong>${escape(t.description || "—")}</strong></td><td>${escape(t.category)}</td><td><span class="badge">${t.type === "savings" ? "Savings deposit" : t.type === "withdrawal" ? "Savings withdrawal" : "Expense"}</span></td><td><strong>${money(t.amount)}</strong></td><td><div class="row-actions"><button class="btn btn-sm" data-action="edit-transaction" data-id="${t.id}">Edit</button><button class="btn btn-sm btn-danger" data-action="delete-transaction" data-id="${t.id}">Delete</button></div></td></tr>`).join("")}</tbody></table></div>`;
+}
+function paycheckTable(s) {
+  if (!s.paychecks.length)
+    return '<p class="empty-state">No paychecks recorded yet.</p>';
+  return `<div class="table-scroll"><table><thead><tr><th>Payday</th><th>Employer</th><th>Received</th><th>Gross on payslip</th><th>Notes</th><th>Actions</th></tr></thead><tbody>${s.paychecks
+    .map(
+      (p) =>
+        `<tr><td>${dateOnly(p.payday)}</td><td>${escape(p.job_name)}</td><td><strong>${money(p.actual_amount)}</strong></td><td>${p.gross_amount === null ? "—" : money(p.gross_amount)}</td><td>${escape(p.notes)}</td><td><div class="row-actions"><button class="btn btn-sm" data-action="edit-paycheck" data-id="${p.id}">Edit</button><button class="btn btn-sm btn-danger" data-action="delete-paycheck" data-id="${p.id}">Delete</button></div></td></tr>`,
+    )
+    .join("")}</tbody></table></div>`;
 }
 export function moneyPage(s) {
   return (

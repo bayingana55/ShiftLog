@@ -95,7 +95,7 @@ server.js → routes/api.js → validation / pay / planning / summary modules
 PostgreSQL
 ```
 
-`lib/pay.js` owns gross earnings calculations. `lib/planning.js` owns the history start date and month sequence. `lib/data.js` builds the dashboard and chart data. `public/js/planning-views.js` renders the paycheck table. The frontend displays server-calculated figures.
+`lib/pay.js` owns gross earnings calculations. `lib/planning.js` owns the history start date and month sequence. `lib/data.js` builds the dashboard and chart data. The frontend displays server-calculated figures.
 
 ## Database design
 

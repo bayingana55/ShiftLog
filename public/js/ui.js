@@ -1,24 +1,18 @@
-export const icons = {
+const icons = {
   dashboard: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
   shifts:
     "M8 3v4 M16 3v4 M3 10h18 M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2 M8 14h3 M8 17h6",
   transactions: "M4 7h16 M16 3l4 4-4 4 M20 17H4 M8 13l-4 4 4 4",
   savings:
     "M12 3v3 M8 3h8 M5 10c0-4 14-4 14 0l2 9c0 3-18 3-18 0z M10 13h4 M12 11v6",
-  analytics: "M4 20V12 M10 20V7 M16 20V3 M22 20H2",
   earnings: "M12 3v18 M17 7c-1-4-10-3-10 1 0 4 10 2 10 7 0 4-9 5-11 1",
   settings:
     "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8 M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1z",
   clock: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M12 7v5l3 2",
   plus: "M12 5v14 M5 12h14",
-  arrow: "M5 12h14 M14 7l5 5-5 5",
   close: "M6 6l12 12 M18 6 6 18",
-  check: "M5 12l4 4L19 6",
   wallet: "M3 6h16v4 M3 6v14h18V10H3z M16 14h5",
   leaf: "M5 19C-1 8 11 3 21 3c0 12-5 20-16 16z M5 19 15 9",
-  play: "M8 4l12 8-12 8z",
-  stop: "M6 6h12v12H6z",
-  food: "M4 3v7h6V3 M7 10v11 M18 3c-4 5-3 10 0 10V3v18",
 };
 export const icon = (name) =>
   `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${icons[name] || icons.wallet}"/></svg>`;
