@@ -219,3 +219,16 @@ test("Paycheck accepts zero received and an optional gross amount", () => {
     }),
   );
 });
+
+test("Shifts overlap only when each starts before the other ends", async () => {
+  const { overlaps, rejectOverlap, rejectNegativeSavings } =
+    await import("../lib/validation.js");
+  const a = shift(1, "2026-09-14T09:00", "2026-09-14T14:00");
+  assert.ok(overlaps(a, shift(2, "2026-09-14T13:00", "2026-09-14T15:00")));
+  assert.ok(overlaps(a, shift(2, "2026-09-14T10:00", "2026-09-14T11:00")));
+  // Back-to-back shifts are allowed.
+  assert.ok(!overlaps(a, shift(2, "2026-09-14T14:00", "2026-09-14T16:00")));
+  assert.throws(() => rejectOverlap(true), { status: 409 });
+  assert.throws(() => rejectNegativeSavings(-0.01), { status: 409 });
+  assert.doesNotThrow(() => rejectNegativeSavings(0));
+});

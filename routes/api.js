@@ -9,12 +9,15 @@ import {
   transactionInput,
   paycheckInput,
   payRate,
+  rejectOverlap,
+  rejectNegativeSavings,
 } from "../lib/validation.js";
 import {
   getShifts,
   getTransactions,
   getSummary,
   getPaychecks,
+  filterRecords,
 } from "../lib/data.js";
 import { localDate } from "../lib/time.js";
 
@@ -46,31 +49,7 @@ async function validateShift(db, s, except = 0) {
     "SELECT id FROM shifts WHERE id<>$3 AND clock_in < $2 AND clock_out > $1",
     [s.clock_in, s.clock_out, except],
   );
-  check(
-    !overlap.rowCount,
-    "This shift overlaps another shift. Check the Shifts page.",
-    409,
-  );
-}
-function filterRows(rows, query, field) {
-  if (query.from) date(query.from);
-  if (query.to) date(query.to);
-  check(
-    !query.from || !query.to || query.from <= query.to,
-    "Start date must not be after end date.",
-  );
-  if (query.job_id) id(query.job_id);
-  return rows.filter((row) => {
-    const day = field === "date" ? row.date : localDate(row[field]);
-    if (day < HISTORY_START) return false;
-    return (
-      (!query.from || day >= query.from) &&
-      (!query.to || day <= query.to) &&
-      (!query.job_id || row.job_id === Number(query.job_id)) &&
-      (!query.type || row.type === query.type) &&
-      (!query.category || row.category === query.category)
-    );
-  });
+  rejectOverlap(overlap.rowCount > 0);
 }
 async function savingsBalance(db) {
   const result = await db.query(
@@ -81,11 +60,7 @@ async function savingsBalance(db) {
   return Number(result.rows[0].balance);
 }
 async function validateSavingsBalance(db) {
-  check(
-    (await savingsBalance(db)) >= 0,
-    "This change would make actual savings negative. Reduce or remove the related withdrawal first.",
-    409,
-  );
+  rejectNegativeSavings(await savingsBalance(db));
 }
 export function api(db) {
   const router = Router();
@@ -93,7 +68,7 @@ export function api(db) {
     res.json((await db.query("SELECT * FROM jobs ORDER BY id")).rows),
   );
   router.get("/shifts", async (req, res) =>
-    res.json(filterRows(await getShifts(db), req.query, "clock_in")),
+    res.json(filterRecords(await getShifts(db), req.query, "clock_in")),
   );
   router.post("/shifts", async (req, res) => {
     const s = shiftInput(req.body);
@@ -154,7 +129,7 @@ export function api(db) {
     res.status(204).end();
   });
   router.get("/transactions", async (req, res) =>
-    res.json(filterRows(await getTransactions(db), req.query, "date")),
+    res.json(filterRecords(await getTransactions(db), req.query, "date")),
   );
   router.post("/transactions", async (req, res) => {
     const t = transactionInput(req.body);
