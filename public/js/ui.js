@@ -35,8 +35,7 @@ export const localInput = (value) =>
   value ? window.moment(value).tz(zone).format("YYYY-MM-DDTHH:mm") : "";
 export const day = (value) =>
   window.moment(value).tz(zone).format("MMM D, YYYY");
-export const time = (value) =>
-  value ? window.moment(value).tz(zone).format("h:mm A") : "In progress";
+export const time = (value) => window.moment(value).tz(zone).format("h:mm A");
 export const dateOnly = (value) =>
   window.moment.utc(value).format("MMM D, YYYY");
 export const badge = (shift) =>

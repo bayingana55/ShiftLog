@@ -18,8 +18,8 @@ import {
 } from "../lib/data.js";
 import { localDate } from "../lib/time.js";
 
-// Every shift write shares a transaction lock, so concurrent requests cannot bypass
-// overlap checks. The partial unique index independently enforces one active shift.
+// Every write shares a transaction lock, so two requests at the same moment
+// cannot both pass the overlap or savings-balance checks.
 async function write(db, action) {
   const client = await db.connect();
   try {
@@ -42,13 +42,13 @@ async function validateShift(db, s, except = 0) {
     404,
   );
   const overlap = await db.query(
-    `SELECT id FROM shifts WHERE id<>$3 AND clock_in < COALESCE($2::timestamptz,'infinity'::timestamptz)
-    AND COALESCE(clock_out,'infinity'::timestamptz)>$1::timestamptz`,
+    // Two shifts overlap when each one starts before the other ends.
+    "SELECT id FROM shifts WHERE id<>$3 AND clock_in < $2 AND clock_out > $1",
     [s.clock_in, s.clock_out, except],
   );
   check(
     !overlap.rowCount,
-    "This shift overlaps an existing or active shift. Review shift history.",
+    "This shift overlaps another shift. Check the Shifts page.",
     409,
   );
 }
@@ -97,7 +97,6 @@ export function api(db) {
   );
   router.post("/shifts", async (req, res) => {
     const s = shiftInput(req.body);
-    check(s.clock_out, "A logged shift requires an end date and time.");
     res.status(201).json(
       await write(db, async (c) => {
         await validateShift(c, s);
@@ -122,7 +121,7 @@ export function api(db) {
         const s = shiftInput({
           ...old,
           clock_in: old.clock_in.toISOString(),
-          clock_out: old.clock_out?.toISOString(),
+          clock_out: old.clock_out.toISOString(),
           break_start: old.break_start?.toISOString(),
           ...req.body,
         });

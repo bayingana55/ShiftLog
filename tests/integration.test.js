@@ -41,6 +41,39 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
       },
     );
     await t.test(
+      "migration 005 removed unused tables and columns",
+      async () => {
+        const tables = (
+          await db.query(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema=current_schema()",
+          )
+        ).rows.map((r) => r.table_name);
+        for (const removed of [
+          "payroll_schedule",
+          "payroll_coverage",
+          "budget_rates",
+        ])
+          assert.ok(!tables.includes(removed), removed);
+        const columns = (
+          await db.query(
+            "SELECT table_name||'.'||column_name AS name, is_nullable FROM information_schema.columns WHERE table_schema=current_schema()",
+          )
+        ).rows;
+        const names = columns.map((c) => c.name);
+        for (const removed of [
+          "paychecks.period_start",
+          "paychecks.period_end",
+          "jobs.hourly_wage",
+          "shifts.history_key",
+        ])
+          assert.ok(!names.includes(removed), removed);
+        assert.equal(
+          columns.find((c) => c.name === "shifts.clock_out").is_nullable,
+          "NO",
+        );
+      },
+    );
+    await t.test(
       "create, edit, overnight pay, invalid input, overlap and delete",
       async () => {
         shift = await send(

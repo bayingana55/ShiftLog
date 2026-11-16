@@ -89,11 +89,7 @@ test("Rate boundary and effective dates apply exactly", () => {
     55,
   );
 });
-test("Active shifts have no realized pay and excessive breaks fail", () => {
-  assert.equal(
-    calculatePay(shift(1, "2026-09-14T08:00", null), rules).gross,
-    0,
-  );
+test("A break longer than the shift fails", () => {
   assert.throws(() =>
     calculatePay(shift(1, "2026-09-14T08:00", "2026-09-14T09:00", 61), rules),
   );
