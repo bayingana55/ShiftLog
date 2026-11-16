@@ -1,6 +1,6 @@
 # ShiftLog
 
-**[Try the live demo ↗](https://bayingana55.github.io/ShiftLog/)** · read-only, fictional data
+**[Try the live demo ↗](https://bayingana55.github.io/ShiftLog/)** · interactive sandbox with fictional data: log shifts, add expenses and savings
 
 I work night shifts while studying, and night hours pay a higher rate. Working out my pay by hand got messy fast, especially for shifts that cross midnight, so I built ShiftLog to do it for me.
 
@@ -146,7 +146,13 @@ The shift fields are named `clock_in` and `clock_out` in the API, although the U
 
 ## Public demo
 
-`npm run build:demo` builds a read-only copy into `dist-demo/` that uses fictional data (as of September 22, 2026) and never reads the database, `.env`, or backups. GitHub Actions publishes it to GitHub Pages on every push to `main`. Preview it locally with `node scripts/serve-demo.js` at http://127.0.0.1:3102/ShiftLog/, and test it with `npm run test:demo`.
+The GitHub Pages demo is an interactive sandbox that runs entirely in the visitor's browser: no server, no database, no network writes. Visitors can log, edit, and delete shifts, add expenses, and record savings deposits or withdrawals; paychecks and pay rates are read-only.
+
+- `public/js/demo.js` plays the part of `routes/api.js`. It answers the app's API calls by running the real `lib/validation.js`, `lib/pay.js`, and `lib/data.js`, so pay, totals, and error messages match the full app.
+- `npm run build:demo` copies those `lib/` files unchanged into `dist-demo/`, along with an import map so the browser can load `moment-timezone`. It never includes the database, `.env`, or backups.
+- `lib/demo-data.js` generates fictional records for the nine months up to today. Changes are kept in `sessionStorage`: a refresh keeps them, closing the tab or **Reset demo** starts over.
+
+GitHub Actions publishes the demo on every push to `main`. Preview it with `npm run build:demo && node scripts/serve-demo.js` at http://127.0.0.1:3102/ShiftLog/, and test it with `npm run test:demo`.
 
 ## Scope
 
