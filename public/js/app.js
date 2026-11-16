@@ -7,7 +7,7 @@ import {
   paycheckForm,
   confirmAction,
 } from "./forms.js";
-import { applyDemoControls, demoDate } from "./demo.js";
+import { applyDemoControls } from "./demo.js";
 const main = document.querySelector("#main");
 let state = {},
   currentPage = "",
@@ -196,7 +196,7 @@ document.addEventListener("click", async (event) => {
       const form = document.querySelector("#filter-form");
       if (action === "filter-reset") form.reset();
       else {
-        const now = window.moment(demoDate() || undefined).tz(zone);
+        const now = window.moment().tz(zone);
         form.elements.from.value = now
           .clone()
           .startOf(action === "filter-week" ? "isoWeek" : "month")

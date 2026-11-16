@@ -232,3 +232,16 @@ test("Shifts overlap only when each starts before the other ends", async () => {
   assert.throws(() => rejectNegativeSavings(-0.01), { status: 409 });
   assert.doesNotThrow(() => rejectNegativeSavings(0));
 });
+
+test("Sandbox demo data ends at 'now' and matches the browser test numbers", async () => {
+  const { createDemoData } = await import("../lib/demo-data.js");
+  const { summarize } = await import("../lib/data.js");
+  const now = new Date("2026-09-22T12:00:00-07:00");
+  const demo = createDemoData(now);
+  assert.ok(demo.shifts.every((s) => s.clock_out <= now));
+  assert.ok(demo.transactions.every((t) => t.date <= "2026-09-22"));
+  const summary = summarize(demo, now);
+  assert.equal(summary.hours_week, 7.5);
+  assert.equal(summary.gross_month, 2227.5);
+  assert.equal(summary.monthly[0].month, "2026-01");
+});

@@ -1,6 +1,11 @@
 @import "tailwindcss";
 
 .demo-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
   padding: 12px 24px;
   background: #edf3e3;
   border-bottom: 1px solid #d5dfb7;
