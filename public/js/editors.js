@@ -1,7 +1,5 @@
 import { openModal } from "./forms.js";
 import { api, escape, money, toast } from "./ui.js";
-import { transactionsTable, shiftTable } from "./views.js";
-import { paycheckTable } from "./planning-views.js";
 const actions = (label) =>
   `<div class="form-actions"><button type="button" class="btn" data-cancel>Cancel</button><button type="submit" class="btn btn-primary">${label}</button></div>`;
 export function goalEditor(state, refresh) {
@@ -14,70 +12,4 @@ export function goalEditor(state, refresh) {
       await refresh();
     },
   );
-}
-export function recordsEditor(kind, state) {
-  const configs = {
-    expenses: {
-      title: "Manage actual expenses",
-      action: "add-transaction",
-      label: "Add expense",
-      note: "Add a purchase, correct an amount, or delete a mistaken entry. The total updates automatically.",
-    },
-    savings: {
-      title: "Savings history",
-      action: "add-savings",
-      label: "Add savings",
-      note: "Deposits increase your savings; withdrawals reduce it. Edit or delete an entry to correct a mistake.",
-    },
-    paychecks: {
-      title: "Manage paychecks",
-      action: "add-paycheck",
-      label: "Record paycheck",
-      note: "Record or correct the exact money received. Missing amounts stay unknown.",
-    },
-    shifts: {
-      title: "Manage shifts",
-      action: "add-shift",
-      label: "Log shift",
-      note: "Edit or delete the work entries behind your hours and gross earnings.",
-    },
-  };
-  const config = configs[kind];
-  openModal(
-    config.title,
-    `<p class="form-note mb-4">${config.note}</p><div class="manager-toolbar"><button class="btn btn-primary" data-action="${config.action}">${config.label}</button>${kind === "savings" ? '<button class="btn" data-action="withdraw-savings">Withdraw savings</button>' : ""}</div><label class="mt-4">Search records<input type="search" id="record-search" placeholder="Search date, description, or employer"></label><div id="managed-records" class="mt-4"></div>`,
-  );
-  const modal = document.querySelector("#modal");
-  modal.classList.add("wide-dialog");
-  modal.addEventListener("close", () => modal.classList.remove("wide-dialog"), {
-    once: true,
-  });
-  function draw() {
-    const query = document.querySelector("#record-search").value.toLowerCase();
-    const matches = (r) =>
-      Object.values(r).some((v) =>
-        String(v ?? "")
-          .toLowerCase()
-          .includes(query),
-      );
-    let html;
-    if (kind === "shifts") html = shiftTable(state.all_shifts.filter(matches));
-    else if (kind === "paychecks")
-      html = paycheckTable({
-        ...state,
-        paychecks: state.paychecks.filter(matches),
-      });
-    else
-      html = transactionsTable(
-        state.all_transactions.filter(
-          (t) =>
-            (kind === "expenses"
-              ? t.type === "expense"
-              : ["savings", "withdrawal"].includes(t.type)) && matches(t),
-        ),
-      );
-    document.querySelector("#managed-records").innerHTML = html;
-  }
-  document.querySelector("#record-search").addEventListener("input", draw);
-  draw();
 }

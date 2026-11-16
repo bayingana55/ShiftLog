@@ -1,4 +1,4 @@
-import { paycheckTable, recorded } from "./planning-views.js";
+import { paycheckTable } from "./planning-views.js";
 import {
   icon,
   escape,
@@ -21,8 +21,8 @@ export const pages = [
   ["money", "Money", "transactions"],
   ["settings", "Settings", "settings"],
 ];
-export function stat(label, value, note, iconName, actions = []) {
-  return `<div class="stat-card"><div class="stat-top"><span>${label}</span><span class="stat-icon">${icon(iconName)}</span></div><div class="stat-value">${value}</div><div class="stat-note">${note}</div>${actions.length ? `<div class="stat-actions">${actions.map(([text, action]) => `<button class="btn-link" data-action="${action}">${text}</button>`).join("")}</div>` : ""}</div>`;
+export function stat(label, value, note, iconName) {
+  return `<div class="stat-card"><div class="stat-top"><span>${label}</span><span class="stat-icon">${icon(iconName)}</span></div><div class="stat-value">${value}</div><div class="stat-note">${note}</div></div>`;
 }
 export function shiftTable(shifts, compact = false) {
   if (!shifts.length)
@@ -32,18 +32,6 @@ export function shiftTable(shifts, compact = false) {
     );
   return `<div class="table-scroll ${compact ? "" : "shift-table-scroll"}"><table><thead><tr><th>Date</th><th>Job</th>${compact ? "" : "<th>Start → end</th><th>Break</th>"}<th>Paid hours</th><th>Gross pay</th>${compact ? "" : "<th>Actions</th>"}</tr></thead><tbody>${shifts.map((s) => `<tr><td><strong>${day(s.clock_in)}</strong>${!compact && s.source === "schedule" ? "<small>Schedule estimate</small>" : ""}</td><td>${badge(s)}</td>${compact ? "" : `<td>${time(s.clock_in)} → ${time(s.clock_out)}${s.clock_out && day(s.clock_in) !== day(s.clock_out) ? `<small>Ends ${day(s.clock_out)}</small>` : ""}</td><td>${s.break_minutes} min${s.break_method === "proportional" ? "<small>Proportional</small>" : ""}</td>`}<td>${s.clock_out ? `${hours(s.paid_hours)} hrs` : '<span class="badge active-badge">Needs end time</span>'}</td><td><strong>${s.clock_out ? money(s.gross) : "—"}</strong></td>${compact ? "" : `<td><div class="row-actions"><button class="btn btn-sm" data-action="edit-shift" data-id="${s.id}">Edit</button><button class="btn btn-sm btn-danger" data-action="delete-shift" data-id="${s.id}" aria-label="Delete shift on ${day(s.clock_in)}">Delete</button></div></td>`}</tr>`).join("")}</tbody></table></div>`;
 }
-function recentTransactions(rows) {
-  if (!rows.length)
-    return empty(
-      "No transactions yet. Track an expense or set something aside.",
-      button("Add transaction", "add-transaction", "btn-secondary"),
-    );
-  return `<div class="transaction-list">${rows.map((t) => `<div class="transaction-item"><span class="transaction-symbol">${icon(t.type === "savings" ? "savings" : t.category === "Food" ? "food" : "wallet")}</span><div class="transaction-copy"><strong>${escape(t.description || t.category)}</strong><small>${escape(t.category)} · ${dateOnly(t.date)}</small></div><span class="transaction-amount ${t.type === "savings" ? "positive" : ""}">${t.type === "savings" ? "+" : "−"}${money(t.amount)}</span><div class="row-actions"><button class="btn btn-sm" data-action="edit-transaction" data-id="${t.id}" aria-label="Edit ${escape(t.description || t.category)}">Edit</button><button class="btn btn-sm btn-danger" data-action="delete-transaction" data-id="${t.id}" aria-label="Delete ${escape(t.description || t.category)}">Delete</button></div></div>`).join("")}</div>`;
-}
-export function workBanner() {
-  return `<section class="clock-banner" aria-label="Work log"><div class="clock-symbol">${icon("shifts")}</div><div><h2>Log your work</h2><p class="muted">Finished a shift? Record your hours and see what you earned.</p></div><div class="clock-actions">${button("Log shift", "add-shift")}</div></section>`;
-}
-
 export function incomeCard(id = "income-chart", title = "Earned vs. spent") {
   return `<section class="card card-pad"><div class="card-head"><div><h2>${title}</h2><p>Gross earned and recorded expenses · Since Jan 2026</p></div></div><div class="legend mb-3"><span><i></i>Gross earnings</span><span><i class="spend"></i>Expenses</span></div><div class="chart-wrap"><canvas id="${id}" role="img" aria-label="Gross earnings compared with recorded expenses by month since January 2026"></canvas></div></section>`;
 }
@@ -56,53 +44,12 @@ function savingsCard(s) {
 export function dashboard(s) {
   return (
     heading(
-      "YOUR BIG PICTURE",
-      "A little work. A little progress.",
-      "Your work, cash flow, and goals — clearly separated.",
-      button("Add transaction", "add-transaction"),
+      "OVERVIEW",
+      "Your month at a glance",
+      "Hours, earnings, spending, and savings.",
+      `<div class="manager-toolbar">${button("Log shift", "add-shift")}${button("Add expense", "add-transaction", "btn-secondary")}</div>`,
     ) +
-    workBanner() +
-    `<div class="stat-grid">${stat("Hours this week", `${hours(s.hours_week)} hrs`, "Completed shifts · Monday–Sunday", "clock", [["Manage shifts", "manage-shifts"]])}${stat("Gross earned this month", money(s.gross_month), `${money(s.gross_week)} earned this week`, "earnings", [["Manage shifts", "manage-shifts"]])}${stat(
-      "Actual expenses this month",
-      money(s.spending_month),
-      "Recorded transactions only",
-      "transactions",
-      [
-        ["Add expense", "add-transaction"],
-        ["Edit / remove", "manage-expenses"],
-      ],
-    )}${stat(
-      "Actual pay this month",
-      recorded(s.actual_pay_month),
-      s.paycheck_count_month
-        ? `${s.paycheck_count_month} paycheck(s) recorded · May be incomplete`
-        : "Enter actual paycheck amounts",
-      "earnings",
-      [
-        ["Add paycheck", "add-paycheck"],
-        ["Edit / remove", "manage-paychecks"],
-      ],
-    )}${stat(
-      "Actual cash remaining",
-      recorded(s.cash_remaining_month),
-      "Recorded pay − actual expenses · Not savings",
-      "wallet",
-      [
-        ["Edit pay", "manage-paychecks"],
-        ["Edit expenses", "manage-expenses"],
-      ],
-    )}${stat(
-      "Actual savings balance",
-      money(s.saved),
-      "Deposits − withdrawals · Since Jan 2026",
-      "savings",
-      [
-        ["Add", "add-savings"],
-        ["Withdraw", "withdraw-savings"],
-        ["History", "manage-savings"],
-      ],
-    )}${stat("Remaining actual goal", money(s.remaining), `${s.progress}% actually saved · ${money(s.goal)} goal`, "analytics", [["Edit goal", "edit-goal"]])}</div>
-    <div class="dashboard-middle">${incomeCard()}${savingsCard(s)}</div><div class="dashboard-bottom"><section class="card"><div class="card-head card-header-padded"><div><h2>Recent shifts</h2><p>Your latest work entries</p></div><a class="btn-link" href="#shifts">View all →</a></div>${shiftTable(s.recent_shifts, true)}</section><section class="card"><div class="card-head card-header-padded"><div><h2>Recent transactions</h2><p>Actual expenses and savings deposits</p></div><a class="btn-link" href="#money">View all →</a></div>${recentTransactions(s.recent_transactions)}</section></div>`
+    `<div class="stat-grid">${stat("Hours this week", `${hours(s.hours_week)} hrs`, "Paid hours · Monday–Sunday", "clock")}${stat("Earned this month", money(s.gross_month), "Gross pay from logged shifts", "earnings")}${stat("Spent this month", money(s.spending_month), "Recorded expenses", "transactions")}${stat("Saved vs goal", `${s.progress}%`, `${money(s.saved)} of ${money(s.goal)}`, "savings")}</div>`
   );
 }
 

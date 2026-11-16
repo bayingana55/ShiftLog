@@ -1,4 +1,4 @@
-import { goalEditor, recordsEditor } from "./editors.js";
+import { goalEditor } from "./editors.js";
 import { api, icon, escape, toast, zone } from "./ui.js";
 import * as views from "./views.js";
 import { renderCharts, destroyCharts } from "./charts.js";
@@ -147,8 +147,6 @@ document.addEventListener("click", async (event) => {
     if (action === "edit-goal") return goalEditor(state, render);
     if (action === "withdraw-savings")
       return transactionForm(null, render, "withdrawal");
-    if (action.startsWith("manage-"))
-      return recordsEditor(action.slice(7), state);
 
     if (action === "add-shift") return shiftForm(state.jobs, null, render);
     if (action === "edit-shift")

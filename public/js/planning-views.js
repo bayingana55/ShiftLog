@@ -1,6 +1,4 @@
 import { money, escape, dateOnly } from "./ui.js";
-export const recorded = (value) =>
-  value === null || value === undefined ? "Not recorded" : money(value);
 export function paycheckTable(s) {
   if (!s.paychecks.length)
     return '<p class="empty-state">No paychecks recorded yet.</p>';

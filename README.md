@@ -40,7 +40,7 @@ Install Chromium first with `npx playwright install chromium`, or set
 
 ## Features
 
-- Responsive dashboard with weekly hours, gross earnings, recorded expenses, actual pay received, cash remaining, and savings progress.
+- Responsive dashboard with four numbers: hours this week, gross earned this month, spent this month, and saved vs. goal.
 - **Log shift** with explicit start/end dates and times, unpaid breaks, editing, confirmed deletion, and filters. Overnight shifts use the next calendar date for the end.
 - Centralized date-effective base/premium pay rules and precise or proportional unpaid-break allocation.
 - Actual paycheck CRUD by employer and payday, with optional gross amount and notes.
@@ -59,32 +59,27 @@ The application is a completed-work log: you enter each shift after it ends. The
 
 ## Financial concepts
 
-| Concept               | Source / calculation                                                |
-| --------------------- | ------------------------------------------------------------------- |
-| Gross earnings        | Completed logged shifts × applicable pay rates, minus unpaid breaks |
-| Actual pay received   | Amounts manually recorded against each employer/payday              |
-| Actual expenses       | Recorded expense transactions                                       |
-| Actual cash remaining | Recorded pay received − actual expenses; not automatically savings  |
-| Actual savings        | Recorded savings deposits minus withdrawals                         |
-
-Actual pay and cash remaining are **Not recorded** when a month contains no paycheck records. An explicitly recorded zero paycheck is $0, not missing data. When only some paychecks are entered, the recorded total may be incomplete; the UI shows the record count and labels that limitation. Missing paychecks never erase gross earnings.
+| Concept             | Source / calculation                                                |
+| ------------------- | ------------------------------------------------------------------- |
+| Gross earnings      | Completed logged shifts × applicable pay rates, minus unpaid breaks |
+| Actual pay received | Amounts manually recorded against each employer/payday              |
+| Actual expenses     | Recorded expense transactions                                       |
+| Actual savings      | Recorded savings deposits minus withdrawals                         |
 
 Actual savings progress and remaining goal use deposits minus withdrawals.
 
-## Editing from Overview
+## Pages
 
-Every summary card has visible actions for its underlying records:
+- **Overview:** four cards (hours this week, gross earned this month, spent this month, saved vs. goal) and **Log shift** / **Add expense** buttons.
+- **Shifts:** every shift with filters, edit, and delete.
+- **Money:** savings goal progress, the earned-vs-spent chart, paychecks, and expenses/savings deposits/withdrawals with filters.
+- **Settings:** savings goal and pay rates.
 
-- **Actual expenses → Add expense / Edit / remove:** manage recorded purchases without leaving Overview. Search the record list to find older entries.
-- **Actual savings balance → Add / Withdraw / History:** record transfers or edit/delete existing records. Withdrawals do not count as purchases.
-- **Remaining actual goal → Edit goal:** change the target directly.
-- **Pay and hours cards:** add/edit/delete paychecks or shifts through searchable record managers.
-
-Deletes require confirmation. Savings changes that would leave the current balance negative are rejected; correct the associated withdrawal before deleting a deposit it depends on. Record an expense separately if withdrawn savings was spent. Savings transfers are separate from the “actual cash remaining” calculation, which remains actual pay minus actual expenses.
+Deletes require confirmation. A change that would make the savings balance negative is rejected; correct the related withdrawal before deleting a deposit it depends on. Withdrawals are not expenses; record an expense separately if withdrawn savings was spent.
 
 ## Paydays and paychecks
 
-A paycheck record stores the employer, payday, the amount actually received, an optional gross amount copied from the payslip, and notes. One record is allowed per employer and payday, so both jobs can have a record on the same date. A recorded zero means $0 was received; a month with no records shows **Not recorded**.
+A paycheck record stores the employer, payday, the amount actually received, an optional gross amount copied from the payslip, and notes. One record is allowed per employer and payday, so both jobs can have a record on the same date. A recorded zero means $0 was received.
 
 ## Tech stack and architecture
 
