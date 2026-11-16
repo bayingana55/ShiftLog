@@ -81,17 +81,17 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
           "POST",
           {
             job_id: apple,
-            clock_in: "2026-09-14T08:00",
-            clock_out: "2026-09-14T13:00",
+            clock_in: "2026-09-14T09:00",
+            clock_out: "2026-09-14T14:00",
           },
           201,
         );
-        assert.equal((await send("/api/shifts"))[0].gross, 125);
+        assert.equal((await send("/api/shifts"))[0].gross, 100);
         await send(`/api/shifts/${shift.id}`, "PATCH", {
-          clock_out: "2026-09-14T14:00",
+          clock_out: "2026-09-14T15:00",
           break_minutes: 60,
         });
-        assert.equal((await send("/api/shifts"))[0].gross, 125);
+        assert.equal((await send("/api/shifts"))[0].gross, 100);
         await send(
           "/api/shifts",
           "POST",
@@ -127,15 +127,15 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
           "POST",
           {
             job_id: depot,
-            clock_in: "2026-09-17T21:00",
-            clock_out: "2026-09-18T05:30",
+            clock_in: "2026-09-17T20:00",
+            clock_out: "2026-09-18T04:00",
             break_minutes: 30,
           },
           201,
         );
         assert.equal(
           (await send("/api/shifts")).find((s) => s.id === overnight.id).gross,
-          179.64,
+          146.25,
         );
         assert.equal((await send("/api/shifts?job_id=" + apple)).length, 1);
         await send(`/api/shifts/${shift.id}`, "DELETE", undefined, 204);
@@ -275,7 +275,7 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
       await send(
         "/api/shifts",
         "POST",
-        { job_id: apple, clock_in: "2026-09-18T08:00" },
+        { job_id: apple, clock_in: "2026-09-18T09:00" },
         400,
       );
     });

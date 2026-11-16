@@ -29,8 +29,8 @@ ALTER TABLE shifts ADD CONSTRAINT shifts_break_within CHECK (break_start IS NULL
 CREATE UNIQUE INDEX shifts_one_active ON shifts ((TRUE)) WHERE clock_out IS NULL;
 CREATE INDEX shifts_clock_in_idx ON shifts(clock_in DESC);
 CREATE INDEX shifts_job_idx ON shifts(job_id);
-INSERT INTO jobs(name, hourly_wage) SELECT 'Apple',25 WHERE NOT EXISTS (SELECT 1 FROM jobs WHERE lower(name)='apple');
-INSERT INTO jobs(name, hourly_wage) SELECT 'Home Depot',20.47 WHERE NOT EXISTS (SELECT 1 FROM jobs WHERE lower(name)='home depot');
+INSERT INTO jobs(name, hourly_wage) SELECT 'Apple',20 WHERE NOT EXISTS (SELECT 1 FROM jobs WHERE lower(name)='apple');
+INSERT INTO jobs(name, hourly_wage) SELECT 'Home Depot',18 WHERE NOT EXISTS (SELECT 1 FROM jobs WHERE lower(name)='home depot');
 CREATE TABLE pay_rates (
   id SERIAL PRIMARY KEY, job_id INTEGER NOT NULL REFERENCES jobs(id),
   effective_from DATE NOT NULL, base_rate NUMERIC(10,2) NOT NULL CHECK(base_rate >= 0),
@@ -40,7 +40,7 @@ CREATE TABLE pay_rates (
   CHECK(premium_start <> premium_end), UNIQUE(job_id, effective_from)
 );
 INSERT INTO pay_rates(job_id,effective_from,base_rate,premium_rate)
-SELECT id,'1900-01-01',hourly_wage,CASE WHEN lower(name)='home depot' THEN 22.72 ELSE NULL END FROM jobs;
+SELECT id,'1900-01-01',hourly_wage,CASE WHEN lower(name)='home depot' THEN 20 ELSE NULL END FROM jobs;
 CREATE TABLE transactions (
   id SERIAL PRIMARY KEY, date DATE NOT NULL, amount NUMERIC(12,2) NOT NULL CHECK(amount > 0),
   category VARCHAR(40) NOT NULL CHECK(category IN ('Rent','Food','Transportation','Phone','Shopping','Entertainment','Other','Savings')),
@@ -53,4 +53,4 @@ CREATE INDEX transactions_date_idx ON transactions(date DESC);
 CREATE TABLE savings_goals (
   id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1), amount NUMERIC(12,2) NOT NULL CHECK(amount > 0)
 );
-INSERT INTO savings_goals(id,amount) VALUES(1,28000);
+INSERT INTO savings_goals(id,amount) VALUES(1,10000);

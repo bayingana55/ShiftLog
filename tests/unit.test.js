@@ -11,7 +11,7 @@ const rules = [
   {
     job_id: 1,
     effective_from: "1900-01-01",
-    base_rate: 25,
+    base_rate: 20,
     premium_rate: null,
     premium_start: 1320,
     premium_end: 330,
@@ -19,8 +19,8 @@ const rules = [
   {
     job_id: 2,
     effective_from: "1900-01-01",
-    base_rate: 20.47,
-    premium_rate: 22.72,
+    base_rate: 18,
+    premium_rate: 20,
     premium_start: 1320,
     premium_end: 330,
   },
@@ -32,52 +32,52 @@ const shift = (job, start, end, break_minutes = 0, break_start = null) => ({
   break_minutes,
   break_start: break_start ? instant(break_start) : null,
 });
-test("Apple five hours = $125; nine hours minus lunch = $200", () => {
+test("Apple five hours = $100; nine hours minus lunch = $160", () => {
   assert.equal(
-    calculatePay(shift(1, "2026-09-14T08:00", "2026-09-14T13:00"), rules).gross,
-    125,
+    calculatePay(shift(1, "2026-09-14T09:00", "2026-09-14T14:00"), rules).gross,
+    100,
   );
   const result = calculatePay(
-    shift(1, "2026-09-12T10:00", "2026-09-12T19:00", 60),
+    shift(1, "2026-09-12T09:00", "2026-09-12T18:00", 60),
     rules,
   );
   assert.equal(result.paid_hours, 8);
-  assert.equal(result.gross, 200);
+  assert.equal(result.gross, 160);
 });
 test("Home Depot overnight splits rates; unspecified break allocated proportionally", () => {
   const result = calculatePay(
-    shift(2, "2026-09-17T21:00", "2026-09-18T05:30", 30),
+    shift(2, "2026-09-17T20:00", "2026-09-18T04:00", 30),
     rules,
   );
-  assert.equal(result.paid_hours, 8);
-  assert.equal(result.gross, 179.64);
+  assert.equal(result.paid_hours, 7.5);
+  assert.equal(result.gross, 146.25);
   assert.equal(result.breakdown.length, 2);
   assert.equal(result.break_method, "proportional");
 });
 test("Precisely timed break deducts from its actual pay bucket", () => {
   assert.equal(
     calculatePay(
-      shift(2, "2026-09-17T21:00", "2026-09-18T05:30", 30, "2026-09-18T01:00"),
+      shift(2, "2026-09-17T20:00", "2026-09-18T04:00", 30, "2026-09-18T01:00"),
       rules,
     ).gross,
-    179.51,
+    146,
   );
   assert.equal(
     calculatePay(
-      shift(2, "2026-09-17T21:00", "2026-09-18T05:30", 30, "2026-09-17T21:00"),
+      shift(2, "2026-09-17T20:00", "2026-09-18T04:00", 30, "2026-09-17T20:00"),
       rules,
     ).gross,
-    180.64,
+    147,
   );
 });
 test("Rate boundary and effective dates apply exactly", () => {
   assert.equal(
     calculatePay(shift(2, "2026-09-17T21:00", "2026-09-17T22:00"), rules).gross,
-    20.47,
+    18,
   );
   assert.equal(
     calculatePay(shift(2, "2026-09-17T22:00", "2026-09-17T23:00"), rules).gross,
-    22.72,
+    20,
   );
   const raised = [
     ...rules,
@@ -86,12 +86,12 @@ test("Rate boundary and effective dates apply exactly", () => {
   assert.equal(
     calculatePay(shift(1, "2026-09-14T23:00", "2026-09-15T01:00"), raised)
       .gross,
-    55,
+    50,
   );
 });
 test("A break longer than the shift fails", () => {
   assert.throws(() =>
-    calculatePay(shift(1, "2026-09-14T08:00", "2026-09-14T09:00", 61), rules),
+    calculatePay(shift(1, "2026-09-14T09:00", "2026-09-14T10:00", 61), rules),
   );
 });
 test("Timezone resolves UTC correctly, spring transition, and Vancouver permanent time", () => {
@@ -114,7 +114,7 @@ test("Timezone resolves UTC correctly, spring transition, and Vancouver permanen
     rules,
   );
   assert.equal(result.paid_hours, 2);
-  assert.equal(result.gross, 50);
+  assert.equal(result.gross, 40);
 });
 test("Validation rejects invalid timestamps, dates, fractional breaks and money", () => {
   assert.throws(() => shiftInput({ job_id: 1, clock_in: "2026-02-30T08:00" }));
@@ -154,15 +154,15 @@ test("Validation rejects invalid timestamps, dates, fractional breaks and money"
 test("Home Depot premium ends exactly at 5:30 AM", () => {
   assert.equal(
     calculatePay(shift(2, "2026-09-18T05:00", "2026-09-18T05:30"), rules).gross,
-    11.36,
+    10,
   );
   assert.equal(
     calculatePay(shift(2, "2026-09-18T05:30", "2026-09-18T06:30"), rules).gross,
-    20.47,
+    18,
   );
   assert.equal(
     calculatePay(shift(2, "2026-09-18T05:00", "2026-09-18T06:00"), rules).gross,
-    21.6,
+    19,
   );
 });
 
@@ -181,8 +181,8 @@ test("Nonnegative amounts accept consistently formatted zero values", () => {
 });
 test("Pay rates respect the NUMERIC(10,2) database limit", () => {
   assert.equal(payRate("99999999.99"), 99999999.99);
-  assert.equal(payRate("22.72"), 22.72);
-  for (const value of ["100000000", "999999999", "22.721"])
+  assert.equal(payRate("19.99"), 19.99);
+  for (const value of ["100000000", "999999999", "19.991"])
     assert.throws(() => payRate(value), { status: 400 });
 });
 test("Reports start in January 2026 and expand beyond twelve months", () => {

@@ -6,8 +6,8 @@ CREATE TABLE budget_rates (
   PRIMARY KEY(category,effective_from)
 );
 INSERT INTO budget_rates(category,effective_from,amount) VALUES
-('Rent','2026-01-01',1500),('Groceries','2026-01-01',300),
-('Bills','2026-01-01',150),('Clothes & Going Out','2026-01-01',200);
+('Rent','2026-01-01',1000),('Groceries','2026-01-01',250),
+('Bills','2026-01-01',100),('Clothes & Going Out','2026-01-01',150);
 -- All employers share the confirmed payday anchor. Coverage is configured separately.
 CREATE TABLE payroll_schedule (
   id INTEGER PRIMARY KEY CHECK(id=1),

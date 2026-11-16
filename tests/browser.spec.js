@@ -28,13 +28,13 @@ test("Shifts: log, edit, delete, and overnight premium pay", async ({
     .click();
   await dialog
     .getByLabel("Start date & time (Vancouver)")
-    .fill("2026-09-14T08:00");
+    .fill("2026-09-14T09:00");
   await dialog
     .getByLabel("End date & time (Vancouver)")
-    .fill("2026-09-14T13:00");
+    .fill("2026-09-14T14:00");
   await dialog.getByRole("button", { name: "Save shift" }).click();
   await expect(
-    page.getByRole("cell", { name: "$125.00", exact: true }),
+    page.getByRole("cell", { name: "$100.00", exact: true }),
   ).toBeVisible();
 
   const row = page.getByRole("row").filter({ hasText: "Sep 14, 2026" });
@@ -42,7 +42,7 @@ test("Shifts: log, edit, delete, and overnight premium pay", async ({
   await dialog.getByLabel("Unpaid break (minutes)").fill("30");
   await dialog.getByRole("button", { name: "Save shift" }).click();
   await expect(
-    page.getByRole("cell", { name: "$112.50", exact: true }),
+    page.getByRole("cell", { name: "$90.00", exact: true }),
   ).toBeVisible();
 
   // Cancelling a delete keeps the row; confirming removes it.
@@ -63,14 +63,14 @@ test("Shifts: log, edit, delete, and overnight premium pay", async ({
     .selectOption({ label: "Home Depot" });
   await dialog
     .getByLabel("Start date & time (Vancouver)")
-    .fill("2026-09-17T21:00");
+    .fill("2026-09-17T20:00");
   await dialog
     .getByLabel("End date & time (Vancouver)")
-    .fill("2026-09-18T05:30");
+    .fill("2026-09-18T04:00");
   await dialog.getByLabel("Unpaid break (minutes)").fill("30");
   await dialog.getByRole("button", { name: "Save shift" }).click();
   await expect(
-    page.getByRole("cell", { name: "$179.64", exact: true }),
+    page.getByRole("cell", { name: "$146.25", exact: true }),
   ).toBeVisible();
 });
 

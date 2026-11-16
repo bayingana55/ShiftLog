@@ -31,14 +31,14 @@ A shift belongs to the date it **starts**, so an overnight shift counts in the w
 
 ### Pay rules
 
-Each job has date-effective pay rates: a base rate, plus an optional premium rate for a time window that can cross midnight. Apple pays $25/hour. Home Depot pays $20.47/hour, and $22.72/hour between 22:00 and 05:30. A raise is a new rate with a later "effective from" date, so older shifts keep their original pay.
+Each job has date-effective pay rates: a base rate, plus an optional premium rate for a time window that can cross midnight. In the example data, Apple pays $20/hour, and Home Depot pays $18/hour with $20/hour between 22:00 and 05:30. A raise is a new rate with a later "effective from" date, so older shifts keep their original pay.
 
 `lib/pay.js` walks through a shift one minute at a time and adds each minute to the rate that applies then. An unpaid break with a known start time is subtracted from the minutes it covers. Without a start time, it is spread proportionally across the shift.
 
-- Apple 8 AM–1 PM, no break: **$125.00**
-- Apple 10 AM–7 PM with a 60-minute break: **$200.00**
-- Home Depot 9 PM–5:30 AM with an untimed 30-minute break: **$179.64**
-- The same Home Depot shift with its break at 1 AM: **$179.51**
+- Apple 9 AM–2 PM, no break: **$100.00**
+- Apple 9 AM–6 PM with a 60-minute break: **$160.00**
+- Home Depot 8 PM–4 AM with an untimed 30-minute break: **$146.25**
+- The same Home Depot shift with its break at 1 AM: **$146.00**
 
 ### Rules the app enforces
 
