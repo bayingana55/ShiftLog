@@ -1,12 +1,16 @@
 # ShiftLog
 
-A personal work log for two part-time jobs. Log each shift after it ends, see what it earned, record paychecks and expenses, and track savings toward a goal.
+**[Try the live demo ↗](https://bayingana55.github.io/ShiftLog/)** · read-only, fictional data
 
-Built with Express, PostgreSQL, and vanilla JavaScript as a BCIT CST portfolio project. Tracked history starts **January 1, 2026**.
+I work night shifts while studying, and night hours pay a higher rate. Working out my pay by hand got messy fast, especially for shifts that cross midnight, so I built ShiftLog to do it for me.
+
+It logs my shifts, calculates gross pay minute by minute (including night premium hours), records my real paychecks and expenses, and tracks my savings against a goal.
+
+**Built with:** Node.js, Express, PostgreSQL, vanilla JavaScript, Tailwind CSS · **Tested with:** Node's test runner, Playwright, GitHub Actions
+
+**How I built it:** I used AI tools (Claude) as a tutor and pair programmer: to learn concepts I hadn't covered in class yet, review my code, and simplify the app. I can walk through every part of it.
 
 ![ShiftLog desktop overview](docs/screenshots/dashboard-desktop.png)
-
-<img src="docs/screenshots/dashboard-mobile.png" alt="ShiftLog mobile overview" width="320">
 
 ## Pages
 
