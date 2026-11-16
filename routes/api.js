@@ -17,9 +17,7 @@ import {
   getSummary,
   getPaychecks,
 } from "../lib/data.js";
-import { generateHistory } from "../lib/history.js";
 import { localDate } from "../lib/time.js";
-import { calculatePay } from "../lib/pay.js";
 
 // Every shift write shares a transaction lock, so concurrent requests cannot bypass
 // overlap checks. The partial unique index independently enforces one active shift.
@@ -54,23 +52,6 @@ async function validateShift(db, s, except = 0) {
     "This shift overlaps an existing or active shift. Review shift history.",
     409,
   );
-}
-async function insertShift(db, s) {
-  return (
-    await db.query(
-      `INSERT INTO shifts(job_id,clock_in,clock_out,break_minutes,break_start,source,history_key)
-    VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [
-        s.job_id,
-        s.clock_in,
-        s.clock_out,
-        s.break_minutes,
-        s.break_start,
-        s.source || "manual",
-        s.history_key || null,
-      ],
-    )
-  ).rows[0];
 }
 function filterRows(rows, query, field) {
   if (query.from) date(query.from);
@@ -121,7 +102,13 @@ export function api(db) {
     res.status(201).json(
       await write(db, async (c) => {
         await validateShift(c, s);
-        return insertShift(c, s);
+        return (
+          await c.query(
+            `INSERT INTO shifts(job_id,clock_in,clock_out,break_minutes,break_start)
+            VALUES($1,$2,$3,$4,$5) RETURNING *`,
+            [s.job_id, s.clock_in, s.clock_out, s.break_minutes, s.break_start],
+          )
+        ).rows[0];
       }),
     );
   });
@@ -454,66 +441,6 @@ export function api(db) {
           [job, effective, base, premium, start, end],
         )
       ).rows[0],
-    );
-  });
-  async function preview(client, input) {
-    const jobs = await client.query("SELECT * FROM jobs");
-    const existing = await client.query("SELECT * FROM shifts");
-    const rates = await client.query(
-      "SELECT *,effective_from::text FROM pay_rates",
-    );
-    return generateHistory(input, jobs.rows).map((s) => {
-      const duplicate = existing.rows.some(
-        (e) =>
-          e.history_key === s.history_key ||
-          (e.job_id === s.job_id && +e.clock_in === +s.clock_in),
-      );
-      const overlap = existing.rows.some(
-        (e) =>
-          +e.clock_in < +s.clock_out &&
-          (!e.clock_out || +e.clock_out > +s.clock_in),
-      );
-      return {
-        ...s,
-        ...calculatePay(s, rates.rows),
-        status: duplicate ? "existing" : overlap ? "conflict" : "ready",
-      };
-    });
-  }
-  router.post("/history/preview", async (req, res) =>
-    res.json(await preview(db, req.body)),
-  );
-  router.post("/history/import", async (req, res) => {
-    check(
-      Array.isArray(req.body.keys) &&
-        req.body.keys.length > 0 &&
-        req.body.keys.length <= 2000 &&
-        req.body.keys.every((k) => typeof k === "string"),
-      "Select shifts from the preview.",
-    );
-    res.json(
-      await write(db, async (c) => {
-        const candidates = await preview(c, req.body),
-          keys = new Set(req.body.keys);
-        check(
-          [...keys].every((key) =>
-            candidates.some((s) => s.history_key === key),
-          ),
-          "Preview has changed. Generate it again.",
-        );
-        let inserted = 0,
-          skipped = 0;
-        for (const s of candidates.filter((s) => keys.has(s.history_key))) {
-          if (s.status !== "ready") {
-            skipped++;
-            continue;
-          }
-          await validateShift(c, s);
-          await insertShift(c, s);
-          inserted++;
-        }
-        return { inserted, skipped };
-      }),
     );
   });
   return router;

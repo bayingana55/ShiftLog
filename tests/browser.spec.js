@@ -128,21 +128,6 @@ test("Desktop and mobile: navigation, forms, work log, savings, imports, errors"
   await navigate("Savings");
   await navigate("Overview");
   await expect(page.getByText(/50% actually saved/)).toBeVisible();
-  await navigate("Import history");
-  await page.getByLabel("From", { exact: true }).fill("2026-01-01");
-  await page.getByLabel("Through", { exact: true }).fill("2026-01-03");
-  await page.getByRole("button", { name: "Preview shifts" }).click();
-  await expect(
-    page.getByRole("heading", { name: /2 available/ }),
-  ).toBeVisible();
-  await expect(page.locator("[name=history-key]:checked")).toHaveCount(0);
-  await page.getByRole("button", { name: "Select available" }).click();
-  await page.getByRole("button", { name: "Import selected shifts" }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Import selected", exact: true })
-    .click();
-  await expect(page.getByRole("dialog")).not.toBeVisible();
   for (const label of [
     "Overview",
     "Earnings",
@@ -164,7 +149,6 @@ test("Desktop and mobile: navigation, forms, work log, savings, imports, errors"
     "Transactions",
     "Savings",
     "Analytics",
-    "Import history",
     "Settings",
   ]) {
     await navigate(label);

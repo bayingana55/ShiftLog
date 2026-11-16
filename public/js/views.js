@@ -29,7 +29,6 @@ export const pages = [
   ["transactions", "Transactions", "transactions"],
   ["savings", "Savings", "savings"],
   ["analytics", "Analytics", "analytics"],
-  ["history", "Import history", "history"],
   ["settings", "Settings", "settings"],
 ];
 export function stat(label, value, note, iconName, actions = []) {
@@ -183,20 +182,6 @@ export function analyticsPage(s) {
   );
 }
 
-export function historyPage() {
-  return (
-    heading(
-      "FILL IN THE PICTURE",
-      "Import work history",
-      "Preview your regular schedule, then choose the shifts you actually worked.",
-    ) +
-    `<div class="notice"><strong>Schedules are estimates, not proof of attendance.</strong> Uncheck days you did not work. Existing or overlapping shifts are skipped. Apple history starts in May because earlier dates were not specified. Occasional Apple Tuesdays are excluded; add those actual dates manually.</div><section class="card card-pad"><form id="history-form" class="filters"><label>From<input type="date" name="from" value="2026-01-01" min="2026-01-01" max="2026-09-17" required></label><label>Through<input type="date" name="to" value="2026-09-17" max="2026-09-17" required></label><button class="btn btn-primary">Preview shifts</button></form><p class="form-note">Home Depot: Mon/Thu/Sat before May; Mon/Tue/Wed/Thu/Sat from May 1–Sep 7; Thu/Sat from Sep 8. Apple: Mon/Fri/Sat/Sun from May, plus Thursdays through Sep 7. Imports stop at Sep 17, 2026. Log Sep 18 onward manually. The Sep 17 overnight shift ends Sep 18.</p><div id="history-results" class="section-spacer">${empty("Nothing is inserted until you preview, select, and confirm.")}</div></section>`
-  );
-}
-export function historyResults(rows) {
-  const ready = rows.filter((s) => s.status === "ready");
-  return `<div class="card-head"><div><h2>${ready.length} available · ${rows.length - ready.length} existing or conflicting</h2><p>Select only dates you actually worked. All dates are initially unchecked.</p></div><button class="btn" data-action="select-history">Select available</button></div><div class="history-table"><table><thead><tr><th>Select</th><th>Date</th><th>Job</th><th>Time</th><th>Break</th><th>Gross estimate</th><th>Status</th></tr></thead><tbody>${rows.map((s) => `<tr><td><input type="checkbox" name="history-key" value="${escape(s.history_key)}" aria-label="Select ${escape(s.job_name)} ${day(s.clock_in)}" ${s.status === "ready" ? "" : "disabled"}></td><td>${day(s.clock_in)}</td><td>${badge(s)}</td><td>${time(s.clock_in)} → ${time(s.clock_out)}</td><td>${s.break_minutes} min</td><td>${money(s.gross)}</td><td>${s.status}</td></tr>`).join("")}</tbody></table></div><div class="form-actions"><button class="btn btn-primary" data-action="import-history" ${ready.length ? "" : "disabled"}>Import selected shifts</button></div>`;
-}
 export function settingsPage(s, jobs, rates) {
   return (
     heading(

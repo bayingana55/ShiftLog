@@ -178,28 +178,6 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
         );
       },
     );
-    await t.test(
-      "history preview is read-only and concurrent import is idempotent",
-      async () => {
-        const range = { from: "2026-01-01", to: "2026-01-10" };
-        const before = (await send("/api/shifts")).length;
-        const rows = await send("/api/history/preview", "POST", range);
-        assert.equal((await send("/api/shifts")).length, before);
-        assert.ok(rows.length > 0);
-        const payload = { ...range, keys: rows.map((s) => s.history_key) };
-        const results = await Promise.all([
-          send("/api/history/import", "POST", payload),
-          send("/api/history/import", "POST", payload),
-        ]);
-        assert.equal(
-          results.reduce((s, r) => s + r.inserted, 0),
-          rows.length,
-        );
-        const third = await send("/api/history/import", "POST", payload);
-        assert.equal(third.inserted, 0);
-        assert.equal((await send("/api/shifts")).length, before + rows.length);
-      },
-    );
 
     await t.test(
       "Budget planning, projections, and separate actual savings",
@@ -338,39 +316,14 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
         });
       },
     );
-    await t.test(
-      "Full authorized schedule import preserves samples, ends Sep 17, and reruns safely",
-      async () => {
-        const range = { from: "2026-01-01", to: "2026-09-17" };
-        const rows = await send("/api/history/preview", "POST", range);
-        assert.equal(rows.length, 245);
-        const input = { ...range, keys: rows.map((r) => r.history_key) };
-        await send("/api/history/import", "POST", input);
-        assert.equal(
-          (await send("/api/history/import", "POST", input)).inserted,
-          0,
-        );
-        const shifts = await send("/api/shifts");
-        const imported = shifts.filter((s) => s.source === "schedule");
-        assert.ok(imported.every((s) => localDate(s.clock_in) <= "2026-09-17"));
-        assert.equal(
-          new Set(shifts.map((s) => s.job_id + ":" + s.clock_in)).size,
-          shifts.length,
-        );
-        await send(
-          "/api/history/preview",
-          "POST",
-          { ...range, to: "2026-09-18" },
-          400,
-        );
-        await send(
-          "/api/shifts",
-          "POST",
-          { job_id: apple, clock_in: "2026-09-18T08:00" },
-          400,
-        );
-      },
-    );
+    await t.test("a logged shift requires an end time", async () => {
+      await send(
+        "/api/shifts",
+        "POST",
+        { job_id: apple, clock_in: "2026-09-18T08:00" },
+        400,
+      );
+    });
 
     await t.test(
       "Savings adjustments and withdrawals preserve honest totals and protect concurrent balance",

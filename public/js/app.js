@@ -18,7 +18,6 @@ import { applyDemoControls, demoDate } from "./demo.js";
 const main = document.querySelector("#main");
 let state = {},
   currentPage = "",
-  historyRange = null,
   requestVersion = 0;
 const navigation = document.querySelector("#navigation");
 document.querySelector(".skip-link").addEventListener("click", (event) => {
@@ -75,7 +74,6 @@ async function render() {
       savings: () => views.savingsPage(state),
       earnings: () => views.earningsPage(state),
       analytics: () => views.analyticsPage(state),
-      history: () => views.historyPage(),
       settings: () => views.settingsPage(state, jobs, rates),
     };
     main.innerHTML = pages[currentPage]();
@@ -172,18 +170,6 @@ function bindForms() {
       "Save rule",
     );
   });
-  handleSubmit("history-form", async (data) => {
-    const rows = await api("/history/preview", { method: "POST", body: data });
-    historyRange = data;
-    document.querySelector("#history-results").innerHTML =
-      views.historyResults(rows);
-  });
-  // A changed range invalidates its previous preview and selection.
-  document.querySelector("#history-form")?.addEventListener("input", () => {
-    historyRange = null;
-    document.querySelector("#history-results").innerHTML =
-      '<p class="muted">Dates changed. Preview again before importing.</p>';
-  });
 }
 document.addEventListener("click", async (event) => {
   const target = event.target.closest("[data-action]");
@@ -259,44 +245,6 @@ document.addEventListener("click", async (event) => {
         form.elements.to.value = now.format("YYYY-MM-DD");
       }
       form.requestSubmit();
-    }
-    if (action === "select-history") {
-      const inputs = [
-        ...document.querySelectorAll("[name=history-key]:not(:disabled)"),
-      ];
-      const select = inputs.some((i) => !i.checked);
-      inputs.forEach((i) => (i.checked = select));
-      target.textContent = select ? "Clear selection" : "Select available";
-    }
-    if (action === "import-history") {
-      const keys = [
-        ...document.querySelectorAll("[name=history-key]:checked"),
-      ].map((i) => i.value);
-      if (!keys.length) {
-        toast("Select at least one shift you actually worked.");
-        return;
-      }
-      if (!historyRange)
-        throw new Error("Preview your selected date range again.");
-      confirmAction(
-        `Import ${keys.length} shifts?`,
-        "Confirm these are dates you actually worked. Imported rows remain marked as schedule estimates; correct any exceptions in Shift history.",
-        async () => {
-          const result = await api("/history/import", {
-            method: "POST",
-            body: { ...historyRange, keys },
-          });
-          historyRange = { ...historyRange, result };
-        },
-        async () => {
-          const result = historyRange.result;
-          await render();
-          toast(
-            `Imported ${result.inserted} shifts; skipped ${result.skipped} existing or conflicting rows.`,
-          );
-        },
-        "Import selected",
-      );
     }
     if (action === "load-rate") {
       const r = state.rates.find((r) => r.id === key),

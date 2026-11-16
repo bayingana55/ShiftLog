@@ -18,7 +18,6 @@ test("Fictional demo loads every page under a repository path without backend re
     "transactions",
     "savings",
     "analytics",
-    "history",
     "settings",
   ]) {
     await page.locator(`#navigation a[href="#${name}"]`).click();

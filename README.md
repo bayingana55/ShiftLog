@@ -9,9 +9,9 @@ Built with Express, PostgreSQL, and vanilla JavaScript for a BCIT CST portfolio.
 The repository includes a read-only GitHub Pages build with fictional records,
 separate from the PostgreSQL application. It displays a fixed September 22, 2026
 snapshot so the sample charts and quick date filters stay consistent over time.
-Navigation, filters, and chart comparisons work; saving and importing are disabled.
+Navigation, filters, and chart comparisons work; saving is disabled.
 The build uses the application's pay and summary calculations and never reads the
-personal database, `.env`, backups, or historical work importer.
+personal database, `.env`, or backups.
 
 To publish:
 
@@ -47,7 +47,6 @@ Install Chromium first with `npx playwright install chromium`, or set
 - A shared biweekly payday schedule anchored to **September 18, 2026**, without inferred payroll cutoffs.
 - Recurring monthly budgets with custom categories, independent expenses, savings deposits, and withdrawals.
 - January-2026-to-current-month analytics with planned/actual expense selection and separate cumulative savings series.
-- Idempotent historical schedule preview/import restricted to **January 1–September 17, 2026**.
 - A configurable savings goal, initially **$28,000**.
 - Automated unit, PostgreSQL integration, and desktop/mobile browser tests.
 
@@ -132,18 +131,18 @@ PostgreSQL
 
 ## Database design
 
-| Table               | Purpose                                                                                     |
-| ------------------- | ------------------------------------------------------------------------------------------- |
-| `jobs`              | Employer identities and preserved original wage field                                       |
-| `shifts`            | Start/end instants, break duration/start, source, durable historical import key; FK to jobs |
-| `pay_rates`         | Date-effective base/premium rules; authoritative for earnings                               |
-| `transactions`      | Actual expenses, savings deposits, or withdrawals, with a local calendar date               |
-| `savings_goals`     | Singleton savings target                                                                    |
-| `budget_rates`      | Recurring category amounts keyed by category/effective month                                |
-| `payroll_schedule`  | Shared payday anchor and 14-day interval                                                    |
-| `payroll_coverage`  | Optional anchor work-period end per employer                                                |
-| `paychecks`         | Actual amount, optional gross/period dates, notes, creation/update timestamps; FK to jobs   |
-| `schema_migrations` | Applied migration versions                                                                  |
+| Table               | Purpose                                                                                   |
+| ------------------- | ----------------------------------------------------------------------------------------- |
+| `jobs`              | Employer identities and preserved original wage field                                     |
+| `shifts`            | Start/end instants, break duration/start, `source` (manual or schedule); FK to jobs       |
+| `pay_rates`         | Date-effective base/premium rules; authoritative for earnings                             |
+| `transactions`      | Actual expenses, savings deposits, or withdrawals, with a local calendar date             |
+| `savings_goals`     | Singleton savings target                                                                  |
+| `budget_rates`      | Recurring category amounts keyed by category/effective month                              |
+| `payroll_schedule`  | Shared payday anchor and 14-day interval                                                  |
+| `payroll_coverage`  | Optional anchor work-period end per employer                                              |
+| `paychecks`         | Actual amount, optional gross/period dates, notes, creation/update timestamps; FK to jobs |
+| `schema_migrations` | Applied migration versions                                                                |
 
 Migrations are transactional and safe to rerun. `001` preserves existing jobs/shifts and interprets original timestamp-without-zone values as Vancouver wall times when converting to `TIMESTAMPTZ`. Review that assumption before migrating a different legacy database. `002` sets the confirmed Home Depot premium cutoff to 05:30. `003` adds budgets, payday/coverage settings, and actual paychecks. `004` adds withdrawal support and permits custom budget category names. It does not insert actual purchases or payments.
 
@@ -179,17 +178,15 @@ Standard pg variables such as `PGHOST`, `PGUSER`, and `PGPASSWORD` also work. `.
 
 ### Commands
 
-| Command                                   | Purpose                                                |
-| ----------------------------------------- | ------------------------------------------------------ |
-| `npm start` / `npm run dev`               | Start Express / restart backend on changes             |
-| `npm run build` / `npm run css:watch`     | Compile styles / watch frontend styles                 |
-| `npm run migrate`                         | Apply pending migrations                               |
-| `npm run history:preview`                 | Read-only preview of the authorized historical range   |
-| `npm run history:import`                  | Import that schedule with duplicate/overlap protection |
-| `npm test`                                | Unit tests, no database needed                         |
-| `npm run test:integration`                | Real PostgreSQL API tests in disposable test schemas   |
-| `npm run test:e2e`                        | Browser workflows on desktop/mobile                    |
-| `npm run format` / `npm run format:check` | Format source / check formatting                       |
+| Command                                   | Purpose                                              |
+| ----------------------------------------- | ---------------------------------------------------- |
+| `npm start` / `npm run dev`               | Start Express / restart backend on changes           |
+| `npm run build` / `npm run css:watch`     | Compile styles / watch frontend styles               |
+| `npm run migrate`                         | Apply pending migrations                             |
+| `npm test`                                | Unit tests, no database needed                       |
+| `npm run test:integration`                | Real PostgreSQL API tests in disposable test schemas |
+| `npm run test:e2e`                        | Browser workflows on desktop/mobile                  |
+| `npm run format` / `npm run format:check` | Format source / check formatting                     |
 
 ## API overview
 
@@ -208,7 +205,6 @@ All routes below use `/api`. Writes accept JSON. Successful deletes return 204; 
 | `GET/PUT /savings-goal`                                    | Read/set `{ amount }`                                                                      |
 | `GET/PUT /pay-rates`                                       | Read/upsert rules by employer/effective date                                               |
 | `GET /dashboard`                                           | Financial summaries and January-start monthly chart data                                   |
-| `POST /history/preview`, `POST /history/import`            | Range preview and selected import keys, bounded to Jan 1–Sep 17                            |
 
 An actual paycheck can be recorded without knowing its covered work dates:
 
@@ -238,16 +234,9 @@ The pay engine splits actual elapsed time at minute boundaries, selects the appl
 
 Entire shifts belong to their Vancouver **start date** for weekly/monthly and configured work-period reports. Actual payments belong to their **payday**, which may be a different month. Weeks begin Monday. Dates/times use `America/Vancouver`, not fixed-offset subtraction. `TIMESTAMPTZ` values serialize as UTC and render in Vancouver. Invalid spring-transition wall times are rejected. Calendar dates stay strings.
 
-## Historical schedule
+## Imported shifts
 
-The historical importer is limited to January 1–September 17, 2026, inclusive by **shift start date**. The September 17 overnight shift ends September 18; no September 18/19 starting shifts are imported. Subsequent work is entered manually.
-
-- January–April: Home Depot Monday/Thursday/Saturday, 21:00–05:30 next day, 30-minute unpaid break.
-- May 1–September 7: Home Depot Monday–Thursday/Saturday; Apple Monday 08:00–13:00, Friday 18:00–22:00, Thursday/Saturday 10:00–19:00 with 60-minute lunch, Sunday 09:30–18:30 with 60-minute lunch.
-- September 8–17: Home Depot Thursday/Saturday; Apple Monday/Friday/Saturday/Sunday with the same times.
-- No January–April Apple schedule, occasional Apple Tuesdays, sick days, or other exceptions are inferred.
-
-The supplied recurring schedule contains **245 shifts**. The local import preserved the two matching original rows and inserted 243 missing entries; rerunning inserted zero. Imported rows stay labeled as schedule estimates so exceptions can be corrected. SQL migrations do not automatically populate history on other installations: preview, review, and run the import command or use the UI. No paychecks, actual expenses, or savings deposits are fabricated.
+Shifts from January 1 to September 17, 2026 were imported once from a regular schedule (the importer has since been removed). They keep `source = 'schedule'` and show a **Schedule estimate** label, so days that differed from the schedule can be corrected or deleted on the Shifts page.
 
 ## Testing
 
@@ -259,7 +248,7 @@ npx playwright install chromium
 TEST_DATABASE_URL=postgresql://localhost/shiftlog_test npm run test:e2e
 ```
 
-Tests create uniquely named schemas in the separate test database and clean up only those schemas. Coverage includes pay boundaries, overnight work, history cutoff/idempotency, January-start reporting, budget revisions, projected/actual separation, payday anchoring, optional paycheck dates, real zero versus missing pay, CRUD, and browser forms. See [verification notes](docs/VERIFICATION.md).
+Tests create uniquely named schemas in the separate test database and clean up only those schemas. Coverage includes pay boundaries, overnight work, January-start reporting, budget revisions, projected/actual separation, payday anchoring, optional paycheck dates, real zero versus missing pay, CRUD, and browser forms. See [verification notes](docs/VERIFICATION.md).
 
 ## Deployment and scope
 

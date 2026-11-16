@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { calculatePay } from "../lib/pay.js";
 import { instant, localDate } from "../lib/time.js";
-import { generateHistory } from "../lib/history.js";
 import { shiftInput, transactionInput } from "../lib/validation.js";
 const jobs = [
   { id: 1, name: "Apple" },
@@ -120,42 +119,6 @@ test("Timezone resolves UTC correctly, spring transition, and Vancouver permanen
   );
   assert.equal(result.paid_hours, 2);
   assert.equal(result.gross, 50);
-});
-test("History is deterministic, excludes unspecified Tuesdays and January Apple", () => {
-  const input = { from: "2026-01-01", to: "2026-09-17" },
-    now = new Date("2026-09-19T20:00Z");
-  const rows = generateHistory(input, jobs, now);
-  assert.deepEqual(rows, generateHistory(input, jobs, now));
-  assert.equal(new Set(rows.map((r) => r.history_key)).size, rows.length);
-  assert.ok(
-    !rows.some((r) => r.job_id === 1 && localDate(r.clock_in) < "2026-05-01"),
-  );
-  assert.ok(
-    !rows.some(
-      (r) =>
-        r.job_id === 1 &&
-        new Date(`${localDate(r.clock_in)}T12:00Z`).getUTCDay() === 2,
-    ),
-  );
-  assert.ok(
-    rows.some((r) => r.job_id === 2 && localDate(r.clock_in) === "2026-09-07"),
-  );
-  assert.ok(
-    !rows.some((r) => r.job_id === 2 && localDate(r.clock_in) === "2026-09-08"),
-  );
-  assert.ok(
-    !rows.some((r) => r.job_id === 1 && localDate(r.clock_in) === "2026-09-10"),
-  );
-});
-test("History omits unfinished overnight shift", () => {
-  assert.equal(
-    generateHistory(
-      { from: "2026-09-17", to: "2026-09-17" },
-      jobs,
-      new Date("2026-09-18T06:00Z"),
-    ).length,
-    0,
-  );
 });
 test("Validation rejects invalid timestamps, dates, fractional breaks and money", () => {
   assert.throws(() => shiftInput({ job_id: 1, clock_in: "2026-02-30T08:00" }));
@@ -312,17 +275,5 @@ test("Manual paycheck accepts zero and unknown period but rejects partial dates"
       actual_amount: 100,
       period_start: "2026-09-01",
     }),
-  );
-});
-test("Historical generator stops at Sep 17 and rejects Sep 18/19 imports", () => {
-  const rows = generateHistory(
-    { from: "2026-01-01", to: "2026-09-17" },
-    jobs,
-    new Date("2026-09-19T20:00Z"),
-  );
-  assert.equal(rows.length, 245);
-  assert.ok(rows.every((s) => localDate(s.clock_in) <= "2026-09-17"));
-  assert.throws(() =>
-    generateHistory({ from: "2026-01-01", to: "2026-09-18" }, jobs),
   );
 });

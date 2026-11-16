@@ -15,9 +15,7 @@
     "test:integration": "node --test tests/integration.test.js",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "history:preview": "node scripts/import-history.js",
-    "history:import": "node scripts/import-history.js --apply"
+    "format:check": "prettier --check ."
   },
   "keywords": [],
   "author": "",
