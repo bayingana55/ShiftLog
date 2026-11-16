@@ -168,9 +168,12 @@ test("Money: paychecks, expenses, savings, goal, and chart", async ({
   await dialog.getByRole("button", { name: "Cancel" }).click();
   await expect(savings).toContainText("$1,000.00");
 
-  await savings.getByRole("button", { name: "Edit goal", exact: true }).click();
-  await dialog.getByLabel("Goal amount (CAD)").fill("2000");
-  await dialog.getByRole("button", { name: "Save goal" }).click();
+  // The goal is edited in one place: Settings.
+  await savings.getByRole("link", { name: "Change goal" }).click();
+  await page.getByLabel("Goal amount (CAD)").fill("2000");
+  await page.getByRole("button", { name: "Save goal" }).click();
+  await expect(page.getByLabel("Goal amount (CAD)")).toHaveValue("2000");
+  await navigate(page, "Money");
   await expect(savings).toContainText("50% saved");
 
   const chart = await page.evaluate(

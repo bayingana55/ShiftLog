@@ -1,4 +1,3 @@
-import { goalEditor } from "./editors.js";
 import { api, icon, escape, toast, zone } from "./ui.js";
 import * as views from "./views.js";
 import { renderCharts, destroyCharts } from "./charts.js";
@@ -144,7 +143,6 @@ document.addEventListener("click", async (event) => {
     key = Number(target.dataset.id);
   try {
     if (action === "retry") return render();
-    if (action === "edit-goal") return goalEditor(state, render);
     if (action === "withdraw-savings")
       return transactionForm(null, render, "withdrawal");
 
