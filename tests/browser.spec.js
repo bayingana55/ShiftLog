@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { localDate } from "../lib/time.js";
 test("Desktop and mobile: navigation, forms, work log, savings, imports, errors", async ({
   page,
 }) => {
@@ -177,7 +178,7 @@ test("Desktop and mobile: navigation, forms, work log, savings, imports, errors"
   expect(errors).toEqual([]);
 });
 
-test("Actual paycheck entry, optional periods, missing versus zero, budgets and chart labels", async ({
+test("Actual paycheck entry, missing versus zero, budgets and chart labels", async ({
   page,
 }) => {
   const navigate = async (label) => {
@@ -207,11 +208,9 @@ test("Actual paycheck entry, optional periods, missing versus zero, budgets and 
     await dialog
       .getByRole("combobox", { name: "Employer", exact: true })
       .selectOption({ label: job });
-    await dialog.getByLabel("Payday", { exact: true }).fill("2026-09-18");
+    // Today keeps the paycheck inside "this month" whenever the test runs.
+    await dialog.getByLabel("Payday", { exact: true }).fill(localDate());
     await dialog.getByLabel("Actual amount received (CAD)").fill(amount);
-    await expect(dialog.getByLabel("Work period start (optional)")).toHaveValue(
-      "",
-    );
     await dialog.getByRole("button", { name: "Save paycheck" }).click();
     await expect(dialog).not.toBeVisible();
   }

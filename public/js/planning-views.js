@@ -25,13 +25,12 @@ export function budgetCard(s) {
 }
 export function paycheckTable(s) {
   if (!s.paychecks.length)
-    return '<p class="empty-state">No actual paychecks recorded. Add the exact amount received from each employer.</p>';
-  return `<div class="table-scroll"><table><thead><tr><th>Payday</th><th>Employer</th><th>Actual received</th><th>Gross / estimate</th><th>Difference</th><th>Work dates</th><th>Actions</th></tr></thead><tbody>${s.paychecks
-    .map((p) => {
-      const gross =
-        p.gross_amount !== null ? Number(p.gross_amount) : p.estimated_gross;
-      return `<tr><td>${dateOnly(p.payday)}</td><td>${escape(p.job_name)}</td><td><strong>${money(p.actual_amount)}</strong></td><td>${gross === null ? "Not configured" : money(gross)}<small>${p.gross_amount !== null ? "Recorded gross" : p.estimated_gross !== null ? "From logged shifts" : ""}</small></td><td>${gross === null ? "—" : money(gross - Number(p.actual_amount))}</td><td>${p.period_start ? `${dateOnly(p.period_start)} – ${dateOnly(p.period_end)}` : "Not configured"}${p.partial_history ? "<small>Partial tracked history</small>" : ""}${p.notes ? `<small>${escape(p.notes)}</small>` : ""}</td><td><div class="row-actions"><button class="btn btn-sm" data-action="edit-paycheck" data-id="${p.id}">Edit</button><button class="btn btn-sm btn-danger" data-action="delete-paycheck" data-id="${p.id}">Delete</button></div></td></tr>`;
-    })
+    return '<p class="empty-state">No paychecks recorded yet.</p>';
+  return `<div class="table-scroll"><table><thead><tr><th>Payday</th><th>Employer</th><th>Received</th><th>Gross on payslip</th><th>Notes</th><th>Actions</th></tr></thead><tbody>${s.paychecks
+    .map(
+      (p) =>
+        `<tr><td>${dateOnly(p.payday)}</td><td>${escape(p.job_name)}</td><td><strong>${money(p.actual_amount)}</strong></td><td>${p.gross_amount === null ? "—" : money(p.gross_amount)}</td><td>${escape(p.notes)}</td><td><div class="row-actions"><button class="btn btn-sm" data-action="edit-paycheck" data-id="${p.id}">Edit</button><button class="btn btn-sm btn-danger" data-action="delete-paycheck" data-id="${p.id}">Delete</button></div></td></tr>`,
+    )
     .join("")}</tbody></table></div>`;
 }
 export function planningSettings(s) {

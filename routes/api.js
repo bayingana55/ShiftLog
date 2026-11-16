@@ -239,17 +239,9 @@ export function api(db) {
     res.status(201).json(
       (
         await db.query(
-          `INSERT INTO paychecks(job_id,payday,actual_amount,gross_amount,period_start,period_end,notes)
-      VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *,payday::text,period_start::text,period_end::text`,
-          [
-            p.job_id,
-            p.payday,
-            p.actual_amount,
-            p.gross_amount,
-            p.period_start,
-            p.period_end,
-            p.notes,
-          ],
+          `INSERT INTO paychecks(job_id,payday,actual_amount,gross_amount,notes)
+      VALUES($1,$2,$3,$4,$5) RETURNING *,payday::text`,
+          [p.job_id, p.payday, p.actual_amount, p.gross_amount, p.notes],
         )
       ).rows[0],
     );
@@ -259,27 +251,17 @@ export function api(db) {
     res.json(
       await write(db, async (c) => {
         const old = (
-          await c.query(
-            "SELECT *,payday::text,period_start::text,period_end::text FROM paychecks WHERE id=$1",
-            [key],
-          )
+          await c.query("SELECT *,payday::text FROM paychecks WHERE id=$1", [
+            key,
+          ])
         ).rows[0];
         check(old, "Paycheck not found.", 404);
         const p = paycheckInput({ ...old, ...req.body });
         return (
           await c.query(
-            `UPDATE paychecks SET job_id=$1,payday=$2,actual_amount=$3,gross_amount=$4,period_start=$5,period_end=$6,notes=$7,updated_at=NOW()
-        WHERE id=$8 RETURNING *,payday::text,period_start::text,period_end::text`,
-            [
-              p.job_id,
-              p.payday,
-              p.actual_amount,
-              p.gross_amount,
-              p.period_start,
-              p.period_end,
-              p.notes,
-              key,
-            ],
+            `UPDATE paychecks SET job_id=$1,payday=$2,actual_amount=$3,gross_amount=$4,notes=$5,updated_at=NOW()
+        WHERE id=$6 RETURNING *,payday::text`,
+            [p.job_id, p.payday, p.actual_amount, p.gross_amount, p.notes, key],
           )
         ).rows[0];
       }),

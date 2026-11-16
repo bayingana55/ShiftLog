@@ -224,7 +224,7 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
       },
     );
     await t.test(
-      "Paycheck CRUD supports two employers per payday, null dates, real zero and missing data",
+      "Paycheck CRUD supports two employers per payday, real zero and missing data",
       async () => {
         const a = await send(
           "/api/paychecks",
@@ -238,8 +238,8 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
           { job_id: depot, payday: localDate(), actual_amount: 800 },
           201,
         );
-        assert.equal(a.period_start, null);
-        assert.equal(d.period_end, null);
+        assert.equal(a.gross_amount, null);
+        assert.equal(d.notes, "");
         await send(
           "/api/paychecks",
           "POST",
@@ -276,7 +276,7 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
             job_id: apple,
             payday: localDate(),
             actual_amount: 100,
-            period_start: "2026-09-01",
+            gross_amount: -5,
           },
           400,
         );

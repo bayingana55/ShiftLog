@@ -43,7 +43,7 @@ Install Chromium first with `npx playwright install chromium`, or set
 - Responsive dashboard with weekly hours, gross earnings, planned/actual expenses, actual pay received, cash remaining, and savings progress.
 - **Log shift** with explicit start/end dates and times, unpaid breaks, editing, confirmed deletion, and filters. Overnight shifts use the next calendar date for the end.
 - Centralized date-effective base/premium pay rules and precise or proportional unpaid-break allocation.
-- Actual paycheck CRUD by employer and payday, with optional gross amount, work dates, and notes.
+- Actual paycheck CRUD by employer and payday, with optional gross amount and notes.
 - Recurring monthly budgets with custom categories, independent expenses, savings deposits, and withdrawals.
 - January-2026-to-current-month analytics with planned/actual expense selection and separate cumulative savings series.
 - A configurable savings goal, initially **$28,000**.
@@ -59,16 +59,15 @@ The application is a completed-work log: you enter each shift after it ends. The
 
 ## Financial concepts
 
-| Concept                  | Source / calculation                                                                         |
-| ------------------------ | -------------------------------------------------------------------------------------------- |
-| Gross earnings           | Completed logged shifts × applicable pay rates, minus unpaid breaks                          |
-| Estimated gross paycheck | Logged shift earnings within explicitly known work dates; unavailable if coverage is unknown |
-| Actual pay received      | Amounts manually recorded against each employer/payday                                       |
-| Planned expenses         | Recurring monthly budget, effective from a selected month                                    |
-| Actual expenses          | Recorded expense transactions                                                                |
-| Projected savings        | Gross earned − planned expenses                                                              |
-| Actual cash remaining    | Recorded pay received − actual expenses; not automatically savings                           |
-| Actual savings           | Recorded savings deposits minus withdrawals                                                  |
+| Concept               | Source / calculation                                                |
+| --------------------- | ------------------------------------------------------------------- |
+| Gross earnings        | Completed logged shifts × applicable pay rates, minus unpaid breaks |
+| Actual pay received   | Amounts manually recorded against each employer/payday              |
+| Planned expenses      | Recurring monthly budget, effective from a selected month           |
+| Actual expenses       | Recorded expense transactions                                       |
+| Projected savings     | Gross earned − planned expenses                                     |
+| Actual cash remaining | Recorded pay received − actual expenses; not automatically savings  |
+| Actual savings        | Recorded savings deposits minus withdrawals                         |
 
 Actual pay and cash remaining are **Not recorded** when a month contains no paycheck records. An explicitly recorded zero paycheck is $0, not missing data. When only some paychecks are entered, the recorded total may be incomplete; the UI shows the record count and labels that limitation. Missing paychecks never erase gross earnings.
 
@@ -104,9 +103,7 @@ Settings can save a new budget effective from a selected month. Earlier months k
 
 ## Paydays and paychecks
 
-An actual paycheck record can be added without either work date or a gross amount. If dates are supplied, both are required and must form a valid interval ending on or before payday. Known work dates also enable a shift-based gross estimate for that record. This does not configure all other paychecks automatically.
-
-One paycheck record is allowed per employer/payday, so Apple and Home Depot can both have records on September 18. Off-schedule payment dates are supported in the actual-paycheck list. A recorded gross amount is separate from the amount received. The displayed gross-minus-actual difference is **not classified as tax or deductions**.
+A paycheck record stores the employer, payday, the amount actually received, an optional gross amount copied from the payslip, and notes. One record is allowed per employer and payday, so both jobs can have a record on the same date. A recorded zero means $0 was received; a month with no records shows **Not recorded**.
 
 ## Tech stack and architecture
 
@@ -126,22 +123,22 @@ PostgreSQL
 
 ## Database design
 
-| Table               | Purpose                                                                                   |
-| ------------------- | ----------------------------------------------------------------------------------------- |
-| `jobs`              | Employer identities and preserved original wage field                                     |
-| `shifts`            | Start/end instants, break duration/start, `source` (manual or schedule); FK to jobs       |
-| `pay_rates`         | Date-effective base/premium rules; authoritative for earnings                             |
-| `transactions`      | Actual expenses, savings deposits, or withdrawals, with a local calendar date             |
-| `savings_goals`     | Singleton savings target                                                                  |
-| `budget_rates`      | Recurring category amounts keyed by category/effective month                              |
-| `payroll_schedule`  | No longer used by the app; to be dropped                                                  |
-| `payroll_coverage`  | No longer used by the app; to be dropped                                                  |
-| `paychecks`         | Actual amount, optional gross/period dates, notes, creation/update timestamps; FK to jobs |
-| `schema_migrations` | Applied migration versions                                                                |
+| Table               | Purpose                                                                             |
+| ------------------- | ----------------------------------------------------------------------------------- |
+| `jobs`              | Employer identities and preserved original wage field                               |
+| `shifts`            | Start/end instants, break duration/start, `source` (manual or schedule); FK to jobs |
+| `pay_rates`         | Date-effective base/premium rules; authoritative for earnings                       |
+| `transactions`      | Actual expenses, savings deposits, or withdrawals, with a local calendar date       |
+| `savings_goals`     | Singleton savings target                                                            |
+| `budget_rates`      | Recurring category amounts keyed by category/effective month                        |
+| `payroll_schedule`  | No longer used by the app; to be dropped                                            |
+| `payroll_coverage`  | No longer used by the app; to be dropped                                            |
+| `paychecks`         | Actual amount, optional gross, notes, creation/update timestamps; FK to jobs        |
+| `schema_migrations` | Applied migration versions                                                          |
 
 Migrations are transactional and safe to rerun. `001` preserves existing jobs/shifts and interprets original timestamp-without-zone values as Vancouver wall times when converting to `TIMESTAMPTZ`. Review that assumption before migrating a different legacy database. `002` sets the confirmed Home Depot premium cutoff to 05:30. `003` adds budgets, payday/coverage settings, and actual paychecks. `004` adds withdrawal support and permits custom budget category names. It does not insert actual purchases or payments.
 
-The original `jobs.hourly_wage` remains for compatibility; Settings changes `pay_rates`. Database constraints enforce valid durations, breaks, amounts, optional period pairs, and one actual paycheck per employer/payday. Shift writes use a transaction lock and overlap checks, with an additional database index protecting legacy active shifts.
+The original `jobs.hourly_wage` remains for compatibility; Settings changes `pay_rates`. Database constraints enforce valid durations, breaks, amounts, and one actual paycheck per employer/payday. Shift writes use a transaction lock and overlap checks, with an additional database index protecting legacy active shifts.
 
 ## Local installation
 
@@ -193,13 +190,13 @@ All routes below use `/api`. Writes accept JSON. Successful deletes return 204; 
 | `GET /shifts?job_id=&from=&to=`                            | Joined work entries with paid hours, gross, and break method                               |
 | `POST /shifts`, `PATCH /shifts/:id`, `DELETE /shifts/:id`  | Manual work-log CRUD; creation requires an end timestamp                                   |
 | `GET/POST /transactions`, `PATCH/DELETE /transactions/:id` | Expense/deposit/withdrawal CRUD; reads accept type/category/date filters                   |
-| `GET/POST /paychecks`, `PATCH/DELETE /paychecks/:id`       | Actual-paycheck CRUD; work dates/gross remain optional                                     |
+| `GET/POST /paychecks`, `PATCH/DELETE /paychecks/:id`       | Actual-paycheck CRUD; gross amount is optional                                             |
 | `GET/PUT /budget`                                          | Date-effective budget rows; writes use `{ effective_from, items: [{ category, amount }] }` |
 | `GET/PUT /savings-goal`                                    | Read/set `{ amount }`                                                                      |
 | `GET/PUT /pay-rates`                                       | Read/upsert rules by employer/effective date                                               |
 | `GET /dashboard`                                           | Financial summaries and January-start monthly chart data                                   |
 
-An actual paycheck can be recorded without knowing its covered work dates:
+An actual paycheck can be recorded with just the amount received:
 
 ```json
 {

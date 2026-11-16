@@ -217,21 +217,29 @@ test("Budgets sum to $2150, with changes applied only from their effective month
     2250,
   );
 });
-test("Manual paycheck accepts zero and unknown period but rejects partial dates", () => {
+test("Paycheck accepts zero received and an optional gross amount", () => {
   const p = paycheckInput({
     job_id: 1,
     payday: "2026-09-18",
     actual_amount: 0,
   });
   assert.equal(p.actual_amount, 0);
-  assert.equal(p.period_start, null);
   assert.equal(p.gross_amount, null);
+  assert.equal(
+    paycheckInput({
+      job_id: 1,
+      payday: "2026-09-18",
+      actual_amount: 900,
+      gross_amount: "1100.50",
+    }).gross_amount,
+    1100.5,
+  );
   assert.throws(() =>
     paycheckInput({
       job_id: 1,
       payday: "2026-09-18",
       actual_amount: 100,
-      period_start: "2026-09-01",
+      gross_amount: -5,
     }),
   );
 });
