@@ -248,19 +248,10 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
     });
 
     await t.test(
-      "Savings adjustments and withdrawals preserve honest totals and protect concurrent balance",
+      "withdrawals reduce savings, never below zero, even concurrently",
       async () => {
         const before = await send("/api/dashboard");
-        await send("/api/savings-balance", "PUT", { amount: 1000 });
-        assert.equal((await send("/api/dashboard")).saved, 1000);
-        const reduced = await send("/api/savings-balance", "PUT", {
-          amount: 700,
-        });
-        assert.equal(reduced.adjustment, -300);
-        const noChange = await send("/api/savings-balance", "PUT", {
-          amount: 700,
-        });
-        assert.equal(noChange.adjustment, 0);
+        assert.equal(before.saved, 500); // the 500 deposit from the earlier test
         const withdrawal = await send(
           "/api/transactions",
           "POST",
@@ -272,47 +263,45 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
           },
           201,
         );
-        let summary = await send("/api/dashboard");
-        assert.equal(summary.saved, 600);
+        const summary = await send("/api/dashboard");
+        assert.equal(summary.saved, 400);
         assert.equal(summary.spending_month, before.spending_month);
         await send(`/api/transactions/${withdrawal.id}`, "PATCH", {
           amount: 50,
         });
-        assert.equal((await send("/api/dashboard")).saved, 650);
+        assert.equal((await send("/api/dashboard")).saved, 450);
         await send(
           `/api/transactions/${withdrawal.id}`,
           "DELETE",
           undefined,
           204,
         );
-        assert.equal((await send("/api/dashboard")).saved, 700);
+        assert.equal((await send("/api/dashboard")).saved, 500);
         await send(
           "/api/transactions",
           "POST",
-          { date: localDate(), type: "withdrawal", amount: 701 },
+          { date: localDate(), type: "withdrawal", amount: 501 },
           409,
         );
-        assert.equal((await send("/api/dashboard")).saved, 700);
         const concurrent = await Promise.all([
           request("/api/transactions", "POST", {
             date: localDate(),
             type: "withdrawal",
-            amount: 500,
+            amount: 300,
           }),
           request("/api/transactions", "POST", {
             date: localDate(),
             type: "withdrawal",
-            amount: 500,
+            amount: 300,
           }),
         ]);
         assert.deepEqual(concurrent.map((r) => r.status).sort(), [201, 409]);
+        // Deleting the deposit would leave the 300 withdrawal below zero.
         const deposit = (await send("/api/transactions")).find(
           (t) => t.type === "savings" && Number(t.amount) === 500,
         );
         await send(`/api/transactions/${deposit.id}`, "DELETE", undefined, 409);
-        await send("/api/savings-balance", "PUT", { amount: 0 });
-        assert.equal((await send("/api/dashboard")).saved, 0);
-        await send("/api/savings-balance", "PUT", { amount: -1 }, 400);
+        assert.equal((await send("/api/dashboard")).saved, 200);
       },
     );
     await t.test(

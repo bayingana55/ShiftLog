@@ -1,4 +1,4 @@
-import { goalEditor, balanceEditor, recordsEditor } from "./editors.js";
+import { goalEditor, recordsEditor } from "./editors.js";
 import { api, icon, escape, toast, zone } from "./ui.js";
 import * as views from "./views.js";
 import { renderCharts, destroyCharts } from "./charts.js";
@@ -147,7 +147,6 @@ document.addEventListener("click", async (event) => {
   try {
     if (action === "retry") return render();
     if (action === "edit-goal") return goalEditor(state, render);
-    if (action === "set-savings") return balanceEditor(state, render);
     if (action === "withdraw-savings")
       return transactionForm(null, render, "withdrawal");
     if (action.startsWith("manage-"))

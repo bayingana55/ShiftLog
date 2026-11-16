@@ -278,6 +278,12 @@ test("Actual paycheck entry, missing versus zero, and chart labels", async ({
 test("Overview provides direct editing, savings reduction, withdrawals, and expense removal", async ({
   page,
 }) => {
+  // Earlier tests share this database; start from a zero savings balance.
+  const { saved } = await (await page.request.get("/api/dashboard")).json();
+  if (saved > 0)
+    await page.request.post("/api/transactions", {
+      data: { date: localDate(), type: "withdrawal", amount: saved },
+    });
   await page.goto("/");
   await expect(page.locator("main")).not.toHaveAttribute("aria-busy", "true");
   const savings = page
@@ -287,17 +293,15 @@ test("Overview provides direct editing, savings reduction, withdrawals, and expe
     .locator(".stat-card")
     .filter({ hasText: "Actual expenses this month" });
   const dialog = page.getByRole("dialog");
-  async function setBalance(value) {
-    await savings
-      .getByRole("button", { name: "Set balance", exact: true })
-      .click();
-    await dialog.getByLabel("Actual savings balance (CAD)").fill(value);
-    await dialog.getByRole("button", { name: "Save balance" }).click();
+  async function saveSavings(button, value) {
+    await savings.getByRole("button", { name: button, exact: true }).click();
+    await dialog.getByLabel("Amount (CAD)").fill(value);
+    await dialog.getByRole("button", { name: "Save transaction" }).click();
     await expect(dialog).not.toBeVisible();
   }
-  await setBalance("1000");
+  await saveSavings("Add", "1000");
   await expect(savings).toContainText("$1,000.00");
-  await setBalance("900");
+  await saveSavings("Withdraw", "100");
   await expect(savings).toContainText("$900.00");
   await savings.getByRole("button", { name: "Withdraw", exact: true }).click();
   await dialog.getByLabel("Amount (CAD)").fill("50");
@@ -349,7 +353,7 @@ test("Overview provides direct editing, savings reduction, withdrawals, and expe
   await dialog.getByRole("button", { name: "Save goal" }).click();
   await expect(goal).toContainText("$1,100.00");
   await page.setViewportSize({ width: 390, height: 844 });
-  await setBalance("0");
+  await saveSavings("Withdraw", "900");
   await expect(savings).toContainText("$0.00");
   expect(
     await page.evaluate(

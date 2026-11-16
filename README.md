@@ -76,7 +76,6 @@ Actual savings progress and remaining goal use deposits minus withdrawals.
 Every summary card has visible actions for its underlying records:
 
 - **Actual expenses → Add expense / Edit / remove:** manage recorded purchases without leaving Overview. Search the record list to find older entries.
-- **Actual savings balance → Set balance:** enter a higher or lower amount, including zero. The app records the difference as a dated deposit or withdrawal; it never silently overwrites history.
 - **Actual savings balance → Add / Withdraw / History:** record transfers or edit/delete existing records. Withdrawals do not count as purchases.
 - **Remaining actual goal → Edit goal:** change the target directly.
 - **Pay and hours cards:** add/edit/delete paychecks or shifts through searchable record managers.
@@ -190,7 +189,7 @@ An actual paycheck can be recorded with just the amount received:
 
 No example amount is seeded into the database. A manual overnight shift uses `clock_in: "2026-09-17T21:00"`, `clock_out: "2026-09-18T05:30"`, and `break_minutes: 30`. These API field names are retained even though the UI calls them start/end dates.
 
-`PUT /api/savings-balance` accepts `{ "amount": 500 }` and records only the difference from the current savings balance as a transaction dated today. Repeating the same target is a no-op. Balance reads and transaction mutations share a lock, so concurrent withdrawals cannot overdraw savings.
+Savings balance reads and transaction writes share a lock, so two withdrawals at the same moment cannot overdraw savings.
 
 ## Gross earnings and timezone rules
 

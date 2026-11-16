@@ -53,7 +53,7 @@ export function incomeCard(id = "income-chart", title = "Earned vs. spent") {
 
 function savingsCard(s) {
   const percent = Math.max(0, Math.min(100, s.progress));
-  return `<section class="card card-pad savings-card"><div class="card-head"><div><h2>Savings goal</h2><p>Deposits − withdrawals · Since Jan 2026</p></div>${icon("savings")}</div><div class="goal-total">${money(s.saved)} <span>toward ${money(s.goal)}</span></div><div class="progress" role="progressbar" aria-label="Savings goal progress" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill" style="width:${percent}%"></div></div><div class="progress-labels"><span>${s.progress}% saved</span><span>${money(s.remaining)} to go</span></div><div class="savings-controls"><button class="btn" data-action="set-savings">Set actual balance</button><button class="btn" data-action="edit-goal">Edit goal</button></div></section>`;
+  return `<section class="card card-pad savings-card"><div class="card-head"><div><h2>Savings goal</h2><p>Deposits − withdrawals · Since Jan 2026</p></div>${icon("savings")}</div><div class="goal-total">${money(s.saved)} <span>toward ${money(s.goal)}</span></div><div class="progress" role="progressbar" aria-label="Savings goal progress" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill" style="width:${percent}%"></div></div><div class="progress-labels"><span>${s.progress}% saved</span><span>${money(s.remaining)} to go</span></div><div class="savings-controls"><button class="btn" data-action="add-savings">Add savings</button><button class="btn" data-action="withdraw-savings">Withdraw</button><button class="btn" data-action="edit-goal">Edit goal</button></div></section>`;
 }
 
 export function dashboard(s) {
@@ -100,7 +100,6 @@ export function dashboard(s) {
       "Deposits − withdrawals · Since Jan 2026",
       "savings",
       [
-        ["Set balance", "set-savings"],
         ["Add", "add-savings"],
         ["Withdraw", "withdraw-savings"],
         ["History", "manage-savings"],
@@ -149,7 +148,7 @@ export function savingsPage(s) {
       "Money you have actually set aside.",
       button("Add savings", "add-savings"),
     ) +
-    `<div class="section-grid">${savingsCard(s)}<section class="card card-pad"><div class="card-head"><div><h2>Savings balance</h2><p>Cumulative · Since Jan 2026</p></div></div><div class="chart-wrap"><canvas id="savings-chart" role="img" aria-label="Cumulative savings balance since January 2026"></canvas></div></section></div><section class="card section-spacer"><div class="card-head card-header-padded"><h2>Monthly savings detail</h2></div>${monthlyTable(s, true)}</section><section class="card card-pad section-spacer"><div class="card-head"><h2>Savings history</h2><div class="manager-toolbar"><button class="btn" data-action="set-savings">Set balance</button><button class="btn" data-action="withdraw-savings">Withdraw savings</button><button class="btn" data-action="edit-goal">Edit goal</button></div></div>${transactionsTable(s.all_transactions.filter((t) => ["savings", "withdrawal"].includes(t.type)))}</section>`
+    `<div class="section-grid">${savingsCard(s)}<section class="card card-pad"><div class="card-head"><div><h2>Savings balance</h2><p>Cumulative · Since Jan 2026</p></div></div><div class="chart-wrap"><canvas id="savings-chart" role="img" aria-label="Cumulative savings balance since January 2026"></canvas></div></section></div><section class="card section-spacer"><div class="card-head card-header-padded"><h2>Monthly savings detail</h2></div>${monthlyTable(s, true)}</section><section class="card card-pad section-spacer"><div class="card-head"><h2>Savings history</h2><div class="manager-toolbar"><button class="btn" data-action="withdraw-savings">Withdraw savings</button><button class="btn" data-action="edit-goal">Edit goal</button></div></div>${transactionsTable(s.all_transactions.filter((t) => ["savings", "withdrawal"].includes(t.type)))}</section>`
   );
 }
 

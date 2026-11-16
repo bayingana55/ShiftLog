@@ -8,7 +8,6 @@ import {
   shiftInput,
   transactionInput,
   paycheckInput,
-  nonnegativeAmount,
   payRate,
 } from "../lib/validation.js";
 import {
@@ -209,27 +208,6 @@ export function api(db) {
       await validateSavingsBalance(c);
     });
     res.status(204).end();
-  });
-  router.put("/savings-balance", async (req, res) => {
-    const target = nonnegativeAmount(req.body.amount);
-    res.json(
-      await write(db, async (c) => {
-        const current = await savingsBalance(c);
-        const difference = Math.round((target - current) * 100) / 100;
-        if (difference !== 0)
-          await c.query(
-            "INSERT INTO transactions(date,amount,type,category,description) VALUES($1,$2,$3,$4,$5)",
-            [
-              localDate(),
-              Math.abs(difference),
-              difference > 0 ? "savings" : "withdrawal",
-              "Savings",
-              "Savings balance adjustment",
-            ],
-          );
-        return { balance: target, adjustment: difference };
-      }),
-    );
   });
   router.get("/paychecks", async (req, res) =>
     res.json(await getPaychecks(db)),
