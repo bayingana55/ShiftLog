@@ -76,6 +76,9 @@ test("Starts blank: generic jobs, a $5,000 goal, empty states, no server", async
 
   await go(page, "settings");
   await expect(page.locator('#goal-form [name="amount"]')).toHaveValue("5000");
+  await expect(page.locator("#rates-note")).toHaveText(
+    "Date-effective rates. Pay is recalculated automatically.",
+  );
   const rates = page.locator(".rate-list");
   await expect(rates).toContainText("Day job");
   await expect(rates).toContainText("$20.00/hr");
@@ -156,7 +159,11 @@ test("Load sample data fills four weeks with generic jobs; Reset empties it", as
     .click();
   await expect(card(page, "Hours this week")).toContainText("7.5 hrs");
   await expect(card(page, "Earned this month")).toContainText("$2,227.50");
-  await expect(card(page, "Spent this month")).toContainText("$1,820.00");
+  await expect(card(page, "Spent this month")).toContainText("$1,320.00");
+  await expect(card(page, "Saved vs goal")).toContainText("24%");
+  await expect(card(page, "Saved vs goal")).toContainText(
+    "$1,200.00 of $5,000.00",
+  );
   await expect(page.locator("#main")).not.toContainText(NO_SHIFTS);
 
   await go(page, "shifts");
@@ -179,6 +186,9 @@ test("Load sample data fills four weeks with generic jobs; Reset empties it", as
   await expect(
     page.getByRole("cell", { name: "Sample groceries" }).first(),
   ).toBeVisible();
+  await expect(page.locator(".savings-card")).toContainText(
+    "$1,200.00 toward $5,000.00",
+  );
   // Only generic names, never a real employer.
   await expect(page.locator("body")).not.toContainText(/Apple|Home Depot/);
 

@@ -58,7 +58,7 @@ export function resetDemo() {
   ready = null;
 }
 
-// Replaces the sandbox's shifts and expenses with four weeks of examples.
+// Replaces the sandbox's shifts, expenses and savings with four weeks of examples.
 // Jobs the visitor added and the savings goal stay as they are.
 export async function loadSampleData() {
   const { lib, store } = await sandbox();
@@ -211,12 +211,17 @@ export function applyDemoControls(root) {
     banner.querySelector("#load-sample").onclick = () =>
       confirmAction(
         "Load sample data?",
-        "This replaces the shifts and expenses in this sandbox with four weeks of examples for Day job and Night job.",
+        "This replaces the shifts, expenses and savings in this sandbox with four weeks of examples for Day job and Night job.",
         loadSampleData,
         refresh,
         "Load sample data",
       );
   }
+  // There is no server in the sandbox.
+  const ratesNote = root.querySelector("#rates-note");
+  if (ratesNote)
+    ratesNote.textContent =
+      "Date-effective rates. Pay is recalculated automatically.";
   // Paychecks and pay rates stay read-only in the sandbox.
   root
     .querySelectorAll(

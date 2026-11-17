@@ -297,7 +297,7 @@ test("Sandbox demo starts blank with two generic jobs and a $5,000 goal", async 
   );
 });
 
-test("Sample data: four weeks of ended shifts and expenses, generic jobs only", async () => {
+test("Sample data: four weeks of shifts, expenses and savings, generic jobs only", async () => {
   const { createBlankDemo, createSampleData } =
     await import("../lib/demo-data.js");
   const { summarize } = await import("../lib/data.js");
@@ -311,7 +311,7 @@ test("Sample data: four weeks of ended shifts and expenses, generic jobs only", 
   assert.ok(
     sample.transactions.every(
       (t) =>
-        t.type === "expense" &&
+        t.type !== "withdrawal" &&
         t.date >= "2026-08-26" &&
         t.date <= "2026-09-22",
     ),
@@ -320,5 +320,8 @@ test("Sample data: four weeks of ended shifts and expenses, generic jobs only", 
   const summary = summarize({ ...demo, ...sample }, now);
   assert.equal(summary.hours_week, 7.5);
   assert.equal(summary.gross_month, 2227.5);
-  assert.equal(summary.spending_month, 1820);
+  // Spending stays well below earnings; savings reach about a quarter of the goal.
+  assert.equal(summary.spending_month, 1320);
+  assert.equal(summary.saved, 1200);
+  assert.equal(summary.progress, 24);
 });
