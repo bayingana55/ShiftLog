@@ -12,6 +12,15 @@
   color: #173e36;
   font-size: 14px;
 }
+.demo-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.demo-actions .btn-link {
+  font-size: 12px;
+  text-decoration: underline;
+}
 [data-demo="true"] button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -481,7 +490,7 @@ td strong {
   border-radius: 50%;
   background: currentColor;
 }
-.badge.depot {
+.badge.alt {
   background: #faf0e7;
   color: #bd8052;
 }

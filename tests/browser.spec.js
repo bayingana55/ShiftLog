@@ -246,3 +246,48 @@ test("Overview: four cards, quick actions, mobile layout, and errors", async ({
   ).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("Settings: an added job appears in Log shift and uses its pay rule", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await navigate(page, "Settings");
+  const form = page.locator("#job-form");
+  await form.getByLabel("Job name").fill("Weekend job");
+  await form.getByLabel("Base rate (CAD/hour)").fill("16");
+  await form.getByLabel("Premium rate (optional)").fill("24");
+  await form.getByLabel("Premium starts").fill("22:00");
+  await form.getByLabel("Premium ends").fill("02:00");
+  await form.getByRole("button", { name: "Add job" }).click();
+  await expect(page.locator("#toast")).toHaveText("Weekend job added.");
+  await expect(page.locator(".rate-list")).toContainText("Weekend job");
+
+  // The same name again is rejected with the API's message.
+  await form.getByLabel("Job name").fill("weekend job");
+  await form.getByLabel("Base rate (CAD/hour)").fill("16");
+  await form.getByRole("button", { name: "Add job" }).click();
+  await expect(form.getByRole("alert")).toHaveText(
+    "A job with this name already exists.",
+  );
+
+  // 21:00–22:00 at $16 plus 22:00–23:00 at the $24 premium = $40.
+  await navigate(page, "Shifts");
+  await page
+    .getByRole("button", { name: "Log shift", exact: true })
+    .first()
+    .click();
+  const dialog = page.getByRole("dialog");
+  await dialog
+    .getByRole("combobox", { name: "Job", exact: true })
+    .selectOption({ label: "Weekend job" });
+  await dialog
+    .getByLabel("Start date & time (Vancouver)")
+    .fill("2026-02-10T21:00");
+  await dialog
+    .getByLabel("End date & time (Vancouver)")
+    .fill("2026-02-10T23:00");
+  await dialog.getByRole("button", { name: "Save shift" }).click();
+  const row = page.getByRole("row").filter({ hasText: "Feb 10, 2026" });
+  await expect(row).toContainText("Weekend job");
+  await expect(row.getByRole("cell", { name: "$40.00" })).toBeVisible();
+});

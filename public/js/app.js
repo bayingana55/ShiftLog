@@ -104,6 +104,14 @@ function handleSubmit(id, action) {
     }
   };
 }
+// Time inputs give "HH:MM"; the API stores minutes after midnight.
+function toMinutes(data) {
+  for (const field of ["premium_start", "premium_end"]) {
+    const [h, m] = data[field].split(":").map(Number);
+    data[field] = h * 60 + m;
+  }
+  return data;
+}
 function bindForms() {
   handleSubmit("filter-form", async (data) => {
     const params = new URLSearchParams(
@@ -122,11 +130,13 @@ function bindForms() {
     toast("Savings goal updated.");
     await render();
   });
+  handleSubmit("job-form", async (data) => {
+    await api("/jobs", { method: "POST", body: toMinutes(data) });
+    toast(`${data.name.trim()} added.`);
+    await render();
+  });
   handleSubmit("rate-form", async (data) => {
-    for (const field of ["premium_start", "premium_end"]) {
-      const [h, m] = data[field].split(":").map(Number);
-      data[field] = h * 60 + m;
-    }
+    toMinutes(data);
     confirmAction(
       "Save this pay rule?",
       "Earnings will be recalculated from this effective date until the next configured rule.",

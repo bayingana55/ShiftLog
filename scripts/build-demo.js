@@ -59,4 +59,6 @@ if (!html.includes('type="importmap"'))
   throw new Error("Could not add the import map to the demo page.");
 await writeFile(new URL("index.html", output), html);
 await writeFile(new URL(".nojekyll", output), "");
-console.log("Sandbox demo built in dist-demo with fictional data only.");
+console.log(
+  "Sandbox demo built in dist-demo (starts blank; sample data is generic).",
+);

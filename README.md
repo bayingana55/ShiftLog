@@ -1,6 +1,6 @@
 # ShiftLog
 
-**[Try the live demo ↗](https://bayingana55.github.io/ShiftLog/)** · interactive sandbox with fictional data: log shifts, add expenses and savings
+**[Try the live demo ↗](https://bayingana55.github.io/ShiftLog/)** · interactive sandbox that starts blank: log a shift and watch the pay calculate, or load sample data
 
 I work night shifts while studying, and night hours pay a higher rate. Working out my pay by hand got messy fast, especially for shifts that cross midnight, so I built ShiftLog to do it for me.
 
@@ -19,7 +19,7 @@ It logs my shifts, calculates gross pay minute by minute (including night premiu
 | **Overview** | Four numbers: hours this week, gross earned this month, spent this month, saved vs. goal                  |
 | **Shifts**   | Every shift with filters, edit, and delete                                                                |
 | **Money**    | Savings goal progress, an earned-vs-spent chart, paychecks, and a filterable list of expenses and savings |
-| **Settings** | The savings goal and each job's pay rates                                                                 |
+| **Settings** | The savings goal, an Add job form, and each job's pay rates                                               |
 
 ## How the numbers are calculated
 
@@ -122,7 +122,7 @@ createdb shiftlog_test      # first time only
 export TEST_DATABASE_URL=postgresql://localhost/shiftlog_test
 npm run test:integration    # every API route against a real database
 npx playwright install chromium
-npm run test:e2e            # Shifts, Money, and Overview in a real browser
+npm run test:e2e            # Shifts, Money, Overview and Add job in a real browser
 npm run format:check        # Prettier
 ```
 
@@ -134,7 +134,7 @@ All routes start with `/api` and use JSON. Errors return `{ "error": "message" }
 
 | Route                                                      | Purpose                                             |
 | ---------------------------------------------------------- | --------------------------------------------------- |
-| `GET /jobs`                                                | The employers                                       |
+| `GET/POST /jobs`                                           | The employers; a new job starts with one pay rule   |
 | `GET/POST /shifts`, `PATCH/DELETE /shifts/:id`             | Shifts with calculated paid hours and gross pay     |
 | `GET/POST /transactions`, `PATCH/DELETE /transactions/:id` | Expenses, deposits, withdrawals; filterable by date |
 | `GET/POST /paychecks`, `PATCH/DELETE /paychecks/:id`       | Paychecks                                           |
@@ -146,13 +146,18 @@ The shift fields are named `clock_in` and `clock_out` in the API, although the U
 
 ## Public demo
 
-The GitHub Pages demo is an interactive sandbox that runs entirely in the visitor's browser: no server, no database, no network writes. Visitors can log, edit, and delete shifts, add expenses, and record savings deposits or withdrawals; paychecks and pay rates are read-only.
+The GitHub Pages demo is an interactive sandbox that runs entirely in the visitor's browser: no server, no database, no network writes.
+
+It starts **blank**: no shifts, expenses, savings or paychecks. Two generic jobs are already set up so pay calculates straight away (**Day job** at $20/hour, and **Night job** at $18/hour with $20/hour from 22:00 to 05:30), and the savings goal is $5,000, which visitors can change in Settings. Overview, Shifts and Money show a friendly empty state with a **Log shift** or **Add expense** button until the visitor adds something.
+
+Visitors can log, edit, and delete shifts, add expenses, record savings deposits or withdrawals, change the goal, and add their own jobs in Settings. Paychecks and existing pay rates are read-only. **Load sample data** in the banner fills in four weeks of example shifts and expenses for the two generic jobs, so the charts have something to show; **Reset demo** returns to the blank state.
 
 - `public/js/demo.js` plays the part of `routes/api.js`. It answers the app's API calls by running the real `lib/validation.js`, `lib/pay.js`, and `lib/data.js`, so pay, totals, and error messages match the full app.
 - `npm run build:demo` copies those `lib/` files unchanged into `dist-demo/`, along with an import map so the browser can load `moment-timezone`. It never includes the database, `.env`, or backups.
-- `lib/demo-data.js` generates fictional records for the nine months up to today. Changes are kept in `sessionStorage`: a refresh keeps them, closing the tab or **Reset demo** starts over.
+- `lib/demo-data.js` holds the blank starting state (`createBlankDemo`) and the optional sample data (`createSampleData`). It never contains real employer names or real data.
+- Everything a visitor adds, including new jobs, is kept in their own browser's `sessionStorage`: a refresh keeps it; closing the tab or **Reset demo** starts over.
 
-GitHub Actions publishes the demo on every push to `main`. Preview it with `npm run build:demo && node scripts/serve-demo.js` at http://127.0.0.1:3102/ShiftLog/, and test it with `npm run test:demo`.
+GitHub Actions publishes the demo on every push to `main`. Preview it with `npm run build:demo && node scripts/serve-demo.js` at http://127.0.0.1:3102/ShiftLog/, and test it with `npm run test:demo` (desktop and mobile: starts blank, logging a shift updates the Overview, overlaps are rejected, Load sample data, Add job, and Reset).
 
 ## Scope
 

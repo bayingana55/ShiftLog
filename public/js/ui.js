@@ -38,8 +38,9 @@ export const day = (value) =>
 export const time = (value) => window.moment(value).tz(zone).format("h:mm A");
 export const dateOnly = (value) =>
   window.moment.utc(value).format("MMM D, YYYY");
+// Every second job gets the alternate colour, so jobs are easy to tell apart.
 export const badge = (shift) =>
-  `<span class="badge ${shift.job_name?.toLowerCase() === "home depot" ? "depot" : ""}">${escape(shift.job_name)}</span>`;
+  `<span class="badge ${shift.job_id % 2 === 0 ? "alt" : ""}">${escape(shift.job_name)}</span>`;
 export const empty = (text, action = "") =>
   `<div class="empty-state">${icon("leaf")}<p>${escape(text)}</p>${action}</div>`;
 export const button = (label, action, type = "btn-primary", name = "plus") =>

@@ -211,6 +211,68 @@ test("Database-backed REST workflows in an isolated test schema", async (t) => {
         );
       },
     );
+    await t.test(
+      "a new job gets a pay rule and is used for shift pay",
+      async () => {
+        const rule = { premium_start: 1320, premium_end: 120 };
+        const job = await send(
+          "/api/jobs",
+          "POST",
+          { name: " Weekend job ", base_rate: 16, premium_rate: 24, ...rule },
+          201,
+        );
+        assert.equal(job.name, "Weekend job");
+        assert.ok((await send("/api/jobs")).some((j) => j.id === job.id));
+        const rate = (await send("/api/pay-rates")).find(
+          (r) => r.job_id === job.id,
+        );
+        assert.equal(rate.effective_from, "2026-01-01");
+        assert.equal(Number(rate.premium_rate), 24);
+        // 21:00–22:00 at $16, then 22:00–23:00 at the $24 premium.
+        const created = await send(
+          "/api/shifts",
+          "POST",
+          {
+            job_id: job.id,
+            clock_in: "2026-02-10T21:00",
+            clock_out: "2026-02-10T23:00",
+          },
+          201,
+        );
+        assert.equal(
+          (await send("/api/shifts")).find((x) => x.id === created.id).gross,
+          40,
+        );
+        await send(`/api/shifts/${created.id}`, "DELETE", undefined, 204);
+
+        const count = (await send("/api/jobs")).length;
+        await send(
+          "/api/jobs",
+          "POST",
+          { name: "weekend JOB", base_rate: 16, ...rule },
+          409,
+        );
+        await send(
+          "/api/jobs",
+          "POST",
+          { name: "", base_rate: 16, ...rule },
+          400,
+        );
+        await send("/api/jobs", "POST", { name: "No rate", ...rule }, 400);
+        await send(
+          "/api/jobs",
+          "POST",
+          {
+            name: "Same times",
+            base_rate: 16,
+            premium_start: 60,
+            premium_end: 60,
+          },
+          400,
+        );
+        assert.equal((await send("/api/jobs")).length, count);
+      },
+    );
 
     await t.test(
       "Paycheck CRUD supports two employers per payday and a real zero",

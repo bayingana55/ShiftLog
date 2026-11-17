@@ -23,12 +23,14 @@ export const pages = [
 export function stat(label, value, note, iconName) {
   return `<div class="stat-card"><div class="stat-top"><span>${label}</span><span class="stat-icon">${icon(iconName)}</span></div><div class="stat-value">${value}</div><div class="stat-note">${note}</div></div>`;
 }
+// Shown on Overview and Shifts until the first shift is logged.
+const noShifts = () =>
+  empty(
+    "No shifts yet. Log your first shift to see your pay calculated.",
+    button("Log shift", "add-shift", "btn-secondary"),
+  );
 export function shiftTable(shifts, compact = false) {
-  if (!shifts.length)
-    return empty(
-      "No shifts here yet. Your next shift starts the story.",
-      button("Log shift", "add-shift", "btn-secondary"),
-    );
+  if (!shifts.length) return empty("No shifts match this view.");
   return `<div class="table-scroll ${compact ? "" : "shift-table-scroll"}"><table><thead><tr><th>Date</th><th>Job</th>${compact ? "" : "<th>Start → end</th><th>Break</th>"}<th>Paid hours</th><th>Gross pay</th>${compact ? "" : "<th>Actions</th>"}</tr></thead><tbody>${shifts.map((s) => `<tr><td><strong>${day(s.clock_in)}</strong>${!compact && s.source === "schedule" ? "<small>Schedule estimate</small>" : ""}</td><td>${badge(s)}</td>${compact ? "" : `<td>${time(s.clock_in)} → ${time(s.clock_out)}${day(s.clock_in) !== day(s.clock_out) ? `<small>Ends ${day(s.clock_out)}</small>` : ""}</td><td>${s.break_minutes} min${s.break_method === "proportional" ? "<small>Proportional</small>" : ""}</td>`}<td>${hours(s.paid_hours)} hrs</td><td><strong>${money(s.gross)}</strong></td>${compact ? "" : `<td><div class="row-actions"><button class="btn btn-sm" data-action="edit-shift" data-id="${s.id}">Edit</button><button class="btn btn-sm btn-danger" data-action="delete-shift" data-id="${s.id}" aria-label="Delete shift on ${day(s.clock_in)}">Delete</button></div></td>`}</tr>`).join("")}</tbody></table></div>`;
 }
 function incomeCard(id = "income-chart", title = "Earned vs. spent") {
@@ -48,7 +50,7 @@ export function dashboard(s) {
       "Hours, earnings, spending, and savings.",
       `<div class="manager-toolbar">${button("Log shift", "add-shift")}${button("Add expense", "add-transaction", "btn-secondary")}</div>`,
     ) +
-    `<div class="stat-grid">${stat("Hours this week", `${hours(s.hours_week)} hrs`, "Paid hours · Monday–Sunday", "clock")}${stat("Earned this month", money(s.gross_month), "Gross pay from logged shifts", "earnings")}${stat("Spent this month", money(s.spending_month), "Recorded expenses", "transactions")}${stat("Saved vs goal", `${s.progress}%`, `${money(s.saved)} of ${money(s.goal)}`, "savings")}</div>`
+    `<div class="stat-grid">${stat("Hours this week", `${hours(s.hours_week)} hrs`, "Paid hours · Monday–Sunday", "clock")}${stat("Earned this month", money(s.gross_month), "Gross pay from logged shifts", "earnings")}${stat("Spent this month", money(s.spending_month), "Recorded expenses", "transactions")}${stat("Saved vs goal", `${s.progress}%`, `${money(s.saved)} of ${money(s.goal)}`, "savings")}</div>${s.all_shifts.length ? "" : `<section class="card card-pad section-spacer">${noShifts()}</section>`}`
   );
 }
 
@@ -63,7 +65,7 @@ export function shiftsPage(s, jobs) {
       "Log completed work, make corrections, and review your gross earnings.",
       button("Log shift", "add-shift"),
     ) +
-    `<section class="card card-pad">${filters("shifts", jobs)}<div id="filtered-results">${shiftTable(s.all_shifts)}</div></section><p class="form-note mt-4">Dates and times use America/Vancouver. Overnight shifts have an explicit next-day end date. Gross estimates exclude overtime, holiday pay, and deductions.</p>`
+    `<section class="card card-pad">${filters("shifts", jobs)}<div id="filtered-results">${s.all_shifts.length ? shiftTable(s.all_shifts) : noShifts()}</div></section><p class="form-note mt-4">Dates and times use America/Vancouver. Overnight shifts have an explicit next-day end date. Gross estimates exclude overtime, holiday pay, and deductions.</p>`
   );
 }
 
@@ -89,13 +91,20 @@ export function moneyPage(s) {
       "Paychecks in, expenses out, and what you set aside.",
       button("Add transaction", "add-transaction"),
     ) +
-    `<div class="section-grid">${savingsCard(s)}${incomeCard()}</div><section class="card card-pad section-spacer"><div class="card-head"><h2>Paychecks</h2>${button("Record paycheck", "add-paycheck", "btn-secondary")}</div>${paycheckTable(s)}</section><section class="card card-pad section-spacer"><div class="card-head"><h2>Expenses and savings</h2></div>${filters("transactions")}<div id="filtered-results">${transactionsTable(s.all_transactions)}</div></section>`
+    `<div class="section-grid">${savingsCard(s)}${incomeCard()}</div><section class="card card-pad section-spacer"><div class="card-head"><h2>Paychecks</h2>${button("Record paycheck", "add-paycheck", "btn-secondary")}</div>${paycheckTable(s)}</section><section class="card card-pad section-spacer"><div class="card-head"><h2>Expenses and savings</h2></div>${filters("transactions")}<div id="filtered-results">${s.all_transactions.length ? transactionsTable(s.all_transactions) : empty("No expenses yet. Add an expense to see where your money goes.", button("Add expense", "add-transaction", "btn-secondary"))}</div></section>`
   );
 }
 
+function jobCard() {
+  return `<section class="card card-pad"><div class="card-head"><div><h2>Add job</h2><p>New jobs appear in the Log shift form.</p></div>${icon("shifts")}</div><form id="job-form" class="form-grid"><label class="full-width">Job name<input name="name" maxlength="100" required></label><label>Base rate (CAD/hour)<input name="base_rate" type="number" min="0.01" step="0.01" required></label><label>Premium rate (optional)<input name="premium_rate" type="number" min="0.01" step="0.01"></label><label>Premium starts<input name="premium_start" type="time" value="22:00" required></label><label>Premium ends<input name="premium_end" type="time" value="05:30" required></label><p class="form-note full-width">The pay rule applies to every shift since January 1, 2026. Leave the premium rate empty if the job pays one rate.</p><div class="form-actions full-width mt-0"><button class="btn btn-primary">Add job</button></div></form></section>`;
+}
 export function settingsPage(s, jobs, rates) {
   return (
-    heading("MAKE IT YOURS", "Settings", "Your savings goal and pay rates.") +
-    `<div class="section-grid"><section class="card card-pad"><div class="card-head"><div><h2>Savings goal</h2><p>Give your progress a destination.</p></div>${icon("savings")}</div><form id="goal-form"><label>Goal amount (CAD)<input name="amount" type="number" min="0.01" step="0.01" max="999999999" value="${s.goal}" required></label><div class="form-actions"><button class="btn btn-primary">Save goal</button></div></form></section><section class="card card-pad"><div class="card-head"><div><h2>Pay configuration</h2><p>Date-effective rates, calculated on the server.</p></div>${icon("earnings")}</div><form id="rate-form" class="form-grid"><label>Job<select name="job_id">${jobsOptions(jobs)}</select></label><label>Effective from<input name="effective_from" type="date" value="${today()}" required></label><label>Base rate (CAD/hour)<input name="base_rate" type="number" min="0.01" step="0.01" required></label><label>Premium rate (optional)<input name="premium_rate" type="number" min="0.01" step="0.01"></label><label>Premium starts<input name="premium_start" type="time" value="22:00" required></label><label>Premium ends<input name="premium_end" type="time" value="05:30" required></label><p class="form-note full-width">Home Depot’s premium window is 10 PM–5:30 AM. Updating a rule recalculates shifts from that effective date until the next rule. Use a new effective date for a raise.</p><div class="form-actions full-width mt-0"><button class="btn btn-primary">Save pay rule</button></div></form><div class="rate-list">${rates.map((r) => `<div class="rate-row"><div><strong>${escape(jobs.find((j) => j.id === r.job_id)?.name)}</strong><small>From ${r.effective_from === "1900-01-01" ? "initial history" : dateOnly(r.effective_from)}</small></div><div class="text-right"><strong>${money(r.base_rate)}/hr</strong>${r.premium_rate ? `<small>${money(r.premium_rate)}/hr · ${String(Math.floor(r.premium_start / 60)).padStart(2, "0")}:${String(r.premium_start % 60).padStart(2, "0")}–${String(Math.floor(r.premium_end / 60)).padStart(2, "0")}:${String(r.premium_end % 60).padStart(2, "0")}</small>` : ""}<button class="btn-link mt-2" data-action="load-rate" data-id="${r.id}">Edit this rule</button></div></div>`).join("")}</div></section></div>`
+    heading(
+      "MAKE IT YOURS",
+      "Settings",
+      "Your savings goal, jobs and pay rates.",
+    ) +
+    `<div class="section-grid"><section class="card card-pad"><div class="card-head"><div><h2>Savings goal</h2><p>Give your progress a destination.</p></div>${icon("savings")}</div><form id="goal-form"><label>Goal amount (CAD)<input name="amount" type="number" min="0.01" step="0.01" max="999999999" value="${s.goal}" required></label><div class="form-actions"><button class="btn btn-primary">Save goal</button></div></form></section>${jobCard()}<section class="card card-pad"><div class="card-head"><div><h2>Pay configuration</h2><p>Date-effective rates, calculated on the server.</p></div>${icon("earnings")}</div><form id="rate-form" class="form-grid"><label>Job<select name="job_id">${jobsOptions(jobs)}</select></label><label>Effective from<input name="effective_from" type="date" value="${today()}" required></label><label>Base rate (CAD/hour)<input name="base_rate" type="number" min="0.01" step="0.01" required></label><label>Premium rate (optional)<input name="premium_rate" type="number" min="0.01" step="0.01"></label><label>Premium starts<input name="premium_start" type="time" value="22:00" required></label><label>Premium ends<input name="premium_end" type="time" value="05:30" required></label><p class="form-note full-width">Premium pay applies between the start and end times, for example 10 PM–5:30 AM overnight. Updating a rule recalculates shifts from that effective date until the next rule. Use a new effective date for a raise.</p><div class="form-actions full-width mt-0"><button class="btn btn-primary">Save pay rule</button></div></form><div class="rate-list">${rates.map((r) => `<div class="rate-row"><div><strong>${escape(jobs.find((j) => j.id === r.job_id)?.name)}</strong><small>From ${r.effective_from === "1900-01-01" ? "initial history" : dateOnly(r.effective_from)}</small></div><div class="text-right"><strong>${money(r.base_rate)}/hr</strong>${r.premium_rate ? `<small>${money(r.premium_rate)}/hr · ${String(Math.floor(r.premium_start / 60)).padStart(2, "0")}:${String(r.premium_start % 60).padStart(2, "0")}–${String(Math.floor(r.premium_end / 60)).padStart(2, "0")}:${String(r.premium_end % 60).padStart(2, "0")}</small>` : ""}<button class="btn-link mt-2" data-action="load-rate" data-id="${r.id}">Edit this rule</button></div></div>`).join("")}</div></section></div>`
   );
 }

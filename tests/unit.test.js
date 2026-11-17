@@ -185,6 +185,44 @@ test("Pay rates respect the NUMERIC(10,2) database limit", () => {
   for (const value of ["100000000", "999999999", "19.991"])
     assert.throws(() => payRate(value), { status: 400 });
 });
+test("A new job needs a name, a base rate and a distinct premium window", async () => {
+  const { jobInput, rejectDuplicateJob } = await import("../lib/validation.js");
+  assert.deepEqual(
+    jobInput({
+      name: "  Night job ",
+      base_rate: "18",
+      premium_rate: "20",
+      premium_start: 1320,
+      premium_end: 330,
+    }),
+    {
+      name: "Night job",
+      base_rate: 18,
+      premium_rate: 20,
+      premium_start: 1320,
+      premium_end: 330,
+    },
+  );
+  const valid = { name: "Day job", base_rate: 20, premium_rate: "" };
+  assert.equal(
+    jobInput({ ...valid, premium_start: 1320, premium_end: 330 }).premium_rate,
+    null,
+  );
+  for (const bad of [
+    { ...valid, name: "   " },
+    { ...valid, name: "x".repeat(101) },
+    { ...valid, name: 42 },
+    { ...valid, base_rate: "0" },
+    { ...valid, premium_rate: "-1" },
+    { ...valid, premium_start: 600, premium_end: 600 },
+    { ...valid, premium_start: 1440, premium_end: 0 },
+  ])
+    assert.throws(
+      () => jobInput({ premium_start: 1320, premium_end: 330, ...bad }),
+      { status: 400 },
+    );
+  assert.throws(() => rejectDuplicateJob(true), { status: 409 });
+});
 test("Reports start in January 2026 and expand beyond twelve months", () => {
   assert.deepEqual(trackedMonths("2026-03-01"), [
     "2026-01",
@@ -233,15 +271,54 @@ test("Shifts overlap only when each starts before the other ends", async () => {
   assert.doesNotThrow(() => rejectNegativeSavings(0));
 });
 
-test("Sandbox demo data ends at 'now' and matches the browser test numbers", async () => {
-  const { createDemoData } = await import("../lib/demo-data.js");
+test("Sandbox demo starts blank with two generic jobs and a $5,000 goal", async () => {
+  const { createBlankDemo } = await import("../lib/demo-data.js");
+  const { summarize } = await import("../lib/data.js");
+  const demo = createBlankDemo();
+  assert.deepEqual(
+    demo.jobs.map((j) => j.name),
+    ["Day job", "Night job"],
+  );
+  assert.deepEqual(
+    [demo.shifts, demo.transactions, demo.paychecks],
+    [[], [], []],
+  );
+  const summary = summarize(demo, new Date("2026-09-22T12:00:00-07:00"));
+  assert.equal(summary.goal, 5000);
+  assert.equal(summary.hours_week, 0);
+  assert.equal(summary.gross_month, 0);
+  // Night job pays like the real app's rules: $18, and $20 from 22:00 to 05:30.
+  assert.equal(
+    calculatePay(
+      shift(2, "2026-09-17T20:00", "2026-09-18T04:00", 30),
+      demo.rates,
+    ).gross,
+    146.25,
+  );
+});
+
+test("Sample data: four weeks of ended shifts and expenses, generic jobs only", async () => {
+  const { createBlankDemo, createSampleData } =
+    await import("../lib/demo-data.js");
   const { summarize } = await import("../lib/data.js");
   const now = new Date("2026-09-22T12:00:00-07:00");
-  const demo = createDemoData(now);
-  assert.ok(demo.shifts.every((s) => s.clock_out <= now));
-  assert.ok(demo.transactions.every((t) => t.date <= "2026-09-22"));
-  const summary = summarize(demo, now);
+  const demo = createBlankDemo();
+  const sample = createSampleData(demo.rates, now);
+  assert.ok(sample.shifts.every((s) => s.clock_out <= now));
+  assert.ok(
+    sample.shifts.every((s) => ["Day job", "Night job"].includes(s.job_name)),
+  );
+  assert.ok(
+    sample.transactions.every(
+      (t) =>
+        t.type === "expense" &&
+        t.date >= "2026-08-26" &&
+        t.date <= "2026-09-22",
+    ),
+  );
+  // These numbers are checked again in tests/demo.spec.js.
+  const summary = summarize({ ...demo, ...sample }, now);
   assert.equal(summary.hours_week, 7.5);
   assert.equal(summary.gross_month, 2227.5);
-  assert.equal(summary.monthly[0].month, "2026-01");
+  assert.equal(summary.spending_month, 1820);
 });

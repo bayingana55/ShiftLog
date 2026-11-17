@@ -8,7 +8,9 @@ import {
   shiftInput,
   transactionInput,
   paycheckInput,
-  payRate,
+  rateInput,
+  jobInput,
+  rejectDuplicateJob,
   rejectOverlap,
   rejectNegativeSavings,
 } from "../lib/validation.js";
@@ -67,6 +69,39 @@ export function api(db) {
   router.get("/jobs", async (req, res) =>
     res.json((await db.query("SELECT * FROM jobs ORDER BY id")).rows),
   );
+  // A new job starts with one pay rule that covers all tracked history.
+  router.post("/jobs", async (req, res) => {
+    const j = jobInput(req.body);
+    res.status(201).json(
+      await write(db, async (c) => {
+        rejectDuplicateJob(
+          (
+            await c.query("SELECT id FROM jobs WHERE lower(name)=lower($1)", [
+              j.name,
+            ])
+          ).rowCount,
+        );
+        const job = (
+          await c.query("INSERT INTO jobs(name) VALUES($1) RETURNING *", [
+            j.name,
+          ])
+        ).rows[0];
+        await c.query(
+          `INSERT INTO pay_rates(job_id,effective_from,base_rate,premium_rate,premium_start,premium_end)
+          VALUES($1,$2,$3,$4,$5,$6)`,
+          [
+            job.id,
+            HISTORY_START,
+            j.base_rate,
+            j.premium_rate,
+            j.premium_start,
+            j.premium_end,
+          ],
+        );
+        return job;
+      }),
+    );
+  });
   router.get("/shifts", async (req, res) =>
     res.json(filterRecords(await getShifts(db), req.query, "clock_in")),
   );
@@ -254,26 +289,9 @@ export function api(db) {
     ),
   );
   router.put("/pay-rates", async (req, res) => {
-    const b = req.body,
-      job = id(b.job_id),
-      effective = date(b.effective_from),
-      base = payRate(b.base_rate);
-    const premium =
-      b.premium_rate === "" || b.premium_rate == null
-        ? null
-        : payRate(b.premium_rate);
-    const start = Number(b.premium_start),
-      end = Number(b.premium_end);
-    check(
-      Number.isInteger(start) &&
-        Number.isInteger(end) &&
-        start >= 0 &&
-        start < 1440 &&
-        end >= 0 &&
-        end < 1440 &&
-        start !== end,
-      "Set distinct premium start/end times.",
-    );
+    const job = id(req.body.job_id),
+      effective = date(req.body.effective_from);
+    const r = rateInput(req.body);
     check(
       (await db.query("SELECT id FROM jobs WHERE id=$1", [job])).rowCount,
       "Job not found.",
@@ -284,7 +302,14 @@ export function api(db) {
         await db.query(
           `INSERT INTO pay_rates(job_id,effective_from,base_rate,premium_rate,premium_start,premium_end) VALUES($1,$2,$3,$4,$5,$6)
       ON CONFLICT(job_id,effective_from) DO UPDATE SET base_rate=$3,premium_rate=$4,premium_start=$5,premium_end=$6 RETURNING *`,
-          [job, effective, base, premium, start, end],
+          [
+            job,
+            effective,
+            r.base_rate,
+            r.premium_rate,
+            r.premium_start,
+            r.premium_end,
+          ],
         )
       ).rows[0],
     );
